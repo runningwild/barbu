@@ -1,9 +1,8 @@
 package main
 
 import (
-  "bytes"
-  "fmt"
   "strings"
+  "fmt"
   "flag"
   "io"
   "os"
@@ -33,7 +32,12 @@ func init() {
   }
 }
 
-var player_names = flag.String("players", "", "comma delimited list of player binaries")
+var player_names = []*string{
+  flag.String("player1", "", "command to run for player 1"),
+  flag.String("player2", "", "command to run for player 2"),
+  flag.String("player3", "", "command to run for player 3"),
+  flag.String("player4", "", "command to run for player 4"),
+}
 
 var suits = []byte{'s','h','c','d'}
 var ranks = []byte{'2','3','4','5','6','7','8','9','t','j','q','k','a'}
@@ -75,6 +79,7 @@ type Player interface {
   Stdin()  io.Writer
   Stdout() *bufio.Reader
   Stderr() *bufio.Reader
+  Close()
 }
 
 type termPlayer struct {
@@ -85,7 +90,7 @@ type termPlayer struct {
 func MakeTermPlayer() Player {
   var tp termPlayer
   go tp.routine()
-  return &tp
+  return nil
 }
 func (tp *termPlayer) routine() {
   // First get hand
@@ -113,9 +118,13 @@ func (a *aiPlayer) Stdout() *bufio.Reader {
 func (a *aiPlayer) Stderr() *bufio.Reader {
   return a.stderr
 }
+func (a *aiPlayer) Close() {
+  a.cmd.Wait()
+}
 func MakeAiPlayer(log_filename, name string) (Player, error) {
   var p aiPlayer
-  p.cmd = exec.Command(name)
+  params := strings.Fields(name)
+  p.cmd = exec.Command(params[0], params[1:]...)
   log, err := os.Create(log_filename)
   if err != nil {
     return nil, err
@@ -144,28 +153,41 @@ func MakeAiPlayer(log_filename, name string) (Player, error) {
 
 func main() {
   flag.Parse()
-  player_names_slice := strings.Split(*player_names, ",")
-  if len(player_names_slice) != 4 {
-    fmt.Printf("Must specify exactly 4 players\n")
-    return
-  }
-
-  var players [4]Player
-  var err error
-  for i := range player_names_slice {
-    players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), player_names_slice[i])
-    if err != nil {
-      fmt.Printf("Error: %v\n", err)
+  for i := range player_names {
+    if player_names[i] == nil {
+      fmt.Fprintf(os.Stderr, "Must specify all 4 players\n")
       return
     }
   }
 
-  r := MakeRavage(players, makeDeck())
-  r.Deal()
-  for i := 0; i < 13; i++ {
-    r.Round()
+  var total [4]int
+  N := 100
+  for i := 0; i < N; i++ {
+    var players [4]Player
+    var err error
+    for i := range player_names {
+      players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
+      if err != nil {
+        fmt.Printf("Error: %v\n", err)
+        return
+      }
+    }
+
+    r := MakeRavage(players, makeDeck())
+    r.Deal()
+    for i := 0; i < 13; i++ {
+      r.Round()
+    }
+    scores := r.Score()
+    for i := range scores {
+      total[i] += scores[i]
+      players[i].Close()
+    }
   }
-  fmt.Printf("Scores: %v\n", r.Score())
+  fmt.Printf("Averages:\n")
+  for i := range total {
+    fmt.Printf("Player %d: %.2f\n", i, float64(total[i]) / float64(N))
+  }
 }
 
 

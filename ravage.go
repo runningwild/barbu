@@ -9,6 +9,10 @@ type BarbuGame interface {
   Deal()
   Round() bool  // returns true iff game is over
   Score() [4]int // only call this after the game is over
+
+  // Given the string that a player would normally be given before choosing
+  // what to play, returns an array containing all valid plays
+  GetValidPlays(hand []string, lead string) []string
 }
 
 type Ravage struct {
@@ -25,11 +29,31 @@ func MakeRavage(players [4]Player, deck Deck) *Ravage {
   r.deck = deck
   for i := range players {
     go func(n int, p Player) {
-      line, _, _ := p.Stderr().ReadLine()
+      line, _, err := p.Stderr().ReadLine()
+      if err != nil {
+        return
+      }
       fmt.Printf("Error player(%d): %s\n", n, line)
     } (i, players[i])
   }
   return &r
+}
+
+func (r *Ravage) GetValidPlays(hand []string, lead string) []string {
+  if len(lead) == 0 {
+    return hand
+  }
+  suit := strings.Split(lead, " ")[0][1]
+  var valid []string
+  for _, card := range hand {
+    if card[1] == suit {
+      valid = append(valid, card)
+    }
+  }
+  if len(valid) == 0 {
+    return hand
+  }
+  return valid
 }
 
 func (r *Ravage) Deal() {
@@ -41,9 +65,9 @@ func (r *Ravage) Deal() {
     }
     fmt.Fprintf(r.players[i].Stdin(), "%s\n", hands[i])
   }
-  for i := range r.players {
-    fmt.Printf("Player %d: %s\n", i, hands[i])
-  }
+  // for i := range r.players {
+  //   fmt.Printf("Player %d: %s\n", i, hands[i])
+  // }
 }
 
 func (r *Ravage) Score() [4]int {
@@ -89,7 +113,7 @@ func (r *Ravage) Round() {
     c := (r.current+i)%4
     p := r.players[c]
     h := r.hands[c]
-    fmt.Printf("P%d: Send '%s'\n", c, trick_so_far)
+    // fmt.Printf("P%d: Send '%s'\n", c, trick_so_far)
     fmt.Fprintf(p.Stdin(), "%s\n", trick_so_far)
     bline, _, _ := p.Stdout().ReadLine()
     line := card(strings.TrimSpace(string(bline)))
@@ -112,7 +136,7 @@ func (r *Ravage) Round() {
     if index > 4 {
       index = 4
     }
-    fmt.Printf("P%d: Send '%s'\n", c, strings.Join(plays[index:], " "))
+    // fmt.Printf("P%d: Send '%s'\n", c, strings.Join(plays[index:], " "))
     fmt.Fprintf(p.Stdin(), "%s\n", strings.Join(plays[index:], " "))
   }
   suit := plays[0][1]
