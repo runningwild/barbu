@@ -12,20 +12,20 @@ type BarbuGame interface {
 }
 
 type Ravage struct {
-  players [4]*Player
+  players [4]Player
   hands   [4]map[card]bool
   tricks  [4][]card
   deck    Deck
   current int
 }
 
-func MakeRavage(players [4]*Player, deck Deck) *Ravage {
+func MakeRavage(players [4]Player, deck Deck) *Ravage {
   var r Ravage
   r.players = players
   r.deck = deck
   for i := range players {
-    go func(n int, p *Player) {
-      line, _, _ := p.Stderr.ReadLine()
+    go func(n int, p Player) {
+      line, _, _ := p.Stderr().ReadLine()
       fmt.Printf("Error player(%d): %s\n", n, line)
     } (i, players[i])
   }
@@ -39,7 +39,7 @@ func (r *Ravage) Deal() {
     for j := range hands[i] {
       r.hands[i][hands[i][j]] = true
     }
-    fmt.Fprintf(r.players[i].Stdin, "%s\n", hands[i])
+    fmt.Fprintf(r.players[i].Stdin(), "%s\n", hands[i])
   }
   for i := range r.players {
     fmt.Printf("Player %d: %s\n", i, hands[i])
@@ -90,8 +90,8 @@ func (r *Ravage) Round() {
     p := r.players[c]
     h := r.hands[c]
     fmt.Printf("P%d: Send '%s'\n", c, trick_so_far)
-    fmt.Fprintf(p.Stdin, "%s\n", trick_so_far)
-    bline, _, _ := p.Stdout.ReadLine()
+    fmt.Fprintf(p.Stdin(), "%s\n", trick_so_far)
+    bline, _, _ := p.Stdout().ReadLine()
     line := card(strings.TrimSpace(string(bline)))
     if !h[line] {
       fmt.Printf("ERROR: Player %d tried to player '%s' which he doesn't have!\n", c, line)
@@ -113,7 +113,7 @@ func (r *Ravage) Round() {
       index = 4
     }
     fmt.Printf("P%d: Send '%s'\n", c, strings.Join(plays[index:], " "))
-    fmt.Fprintf(p.Stdin, "%s\n", strings.Join(plays[index:], " "))
+    fmt.Fprintf(p.Stdin(), "%s\n", strings.Join(plays[index:], " "))
   }
   suit := plays[0][1]
   index := 0

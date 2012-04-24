@@ -1,6 +1,7 @@
 package main
 
 import (
+  "bytes"
   "fmt"
   "strings"
   "flag"
@@ -70,14 +71,50 @@ func makeDeck() Deck {
   return d
 }
 
-type Player struct {
-  cmd *exec.Cmd
-  Stdin  io.Writer
-  Stdout *bufio.Reader
-  Stderr *bufio.Reader
+type Player interface {
+  Stdin()  io.Writer
+  Stdout() *bufio.Reader
+  Stderr() *bufio.Reader
 }
-func MakePlayer(log_filename, name string) (*Player, error) {
-  var p Player
+
+type termPlayer struct {
+  // receive hand
+  // receive start of trick and rest of trick
+  // send play
+}
+func MakeTermPlayer() Player {
+  var tp termPlayer
+  go tp.routine()
+  return &tp
+}
+func (tp *termPlayer) routine() {
+  // First get hand
+
+  for {
+
+  }
+}
+func (tp *termPlayer) Stderr() *bufio.Reader {
+  return bufio.NewReader(os.Stderr)
+}
+
+type aiPlayer struct {
+  cmd *exec.Cmd
+  stdin  io.Writer
+  stdout *bufio.Reader
+  stderr *bufio.Reader
+}
+func (a *aiPlayer) Stdin() io.Writer {
+  return a.stdin
+}
+func (a *aiPlayer) Stdout() *bufio.Reader {
+  return a.stdout
+}
+func (a *aiPlayer) Stderr() *bufio.Reader {
+  return a.stderr
+}
+func MakeAiPlayer(log_filename, name string) (Player, error) {
+  var p aiPlayer
   p.cmd = exec.Command(name)
   log, err := os.Create(log_filename)
   if err != nil {
@@ -99,9 +136,9 @@ func MakePlayer(log_filename, name string) (*Player, error) {
   if err != nil {
     return nil, err
   }
-  p.Stdin = io.MultiWriter(in, log)
-  p.Stdout = bufio.NewReader(out)
-  p.Stderr = bufio.NewReader(stderr)
+  p.stdin = io.MultiWriter(in, log)
+  p.stdout = bufio.NewReader(out)
+  p.stderr = bufio.NewReader(stderr)
   return &p, nil
 }
 
@@ -113,10 +150,10 @@ func main() {
     return
   }
 
-  var players [4]*Player
+  var players [4]Player
   var err error
   for i := range player_names_slice {
-    players[i], err = MakePlayer(fmt.Sprintf("%d.out", i), player_names_slice[i])
+    players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), player_names_slice[i])
     if err != nil {
       fmt.Printf("Error: %v\n", err)
       return
