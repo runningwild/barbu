@@ -4,6 +4,7 @@ import (
   "strings"
   "fmt"
   "flag"
+  "runtime/pprof"
   "io"
   "os"
   "bufio"
@@ -31,6 +32,9 @@ func init() {
     'a': 13,
   }
 }
+
+// profiling info
+var cpu_profile = flag.String("cpuprof", "", "file to write cpu profile to")
 
 var player_names = []*string{
   flag.String("player1", "", "command to run for player 1"),
@@ -160,8 +164,25 @@ func main() {
     }
   }
 
+  if *cpu_profile != "" {
+    profile_output, err := os.Create(*cpu_profile)
+    if err != nil {
+      fmt.Printf("Unable to start CPU profile: %v\n", err)
+    } else {
+      err = pprof.StartCPUProfile(profile_output)
+      if err != nil {
+        fmt.Printf("Unable to start CPU profile: %v\n", err)
+        profile_output.Close()
+      } else {
+        defer profile_output.Close()
+        defer pprof.StopCPUProfile()
+      }
+    }
+  }
+
+
   var total [4]int
-  N := 100
+  N := 1000
   for i := 0; i < N; i++ {
     var players [4]Player
     var err error
@@ -181,6 +202,7 @@ func main() {
     scores := r.Score()
     for i := range scores {
       total[i] += scores[i]
+      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
       players[i].Close()
     }
   }
