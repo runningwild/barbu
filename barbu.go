@@ -25,6 +25,8 @@ var player_names = []*string{
 }
 
 var game = flag.String("game", "", "The barbu game to run")
+var num_games = flag.Int("n", 1, "Number of games")
+var all_perms = flag.Bool("permute", false, "Run all permutations for each deck (24 runs per deck).")
 
 type BarbuGame interface {
   Deal()
@@ -245,7 +247,10 @@ func main() {
   }
 
   var total [4]int
-  N := 100
+  N := *num_games
+  if !*all_perms {
+    perms = [][]int{{0, 1, 2, 3}}
+  }
   for i := 0; i < N; i++ {
     deck := makeDeck()
     for _, perm := range perms {
