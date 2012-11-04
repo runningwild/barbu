@@ -7,7 +7,7 @@ import (
 
 type BarbuGame interface {
   Deal()
-  Round() bool  // returns true iff game is over
+  Round() bool   // returns true iff game is over
   Score() [4]int // only call this after the game is over
 
   // Given the string that a player would normally be given before choosing
@@ -34,7 +34,7 @@ func MakeRavage(players [4]Player, deck Deck) *Ravage {
         return
       }
       fmt.Printf("Error player(%d): %s\n", n, line)
-    } (i, players[i])
+    }(i, players[i])
   }
   return &r
 }
@@ -110,7 +110,7 @@ func (r *Ravage) Round() {
 
   // Have everyone play their card for the trick
   for i := 0; i < 4; i++ {
-    c := (r.current+i)%4
+    c := (r.current + i) % 4
     p := r.players[c]
     h := r.hands[c]
     // fmt.Printf("P%d: Send '%s'\n", c, trick_so_far)
@@ -130,9 +130,9 @@ func (r *Ravage) Round() {
   // Let everyone know what cards were played after them in this trick
   plays := strings.Split(trick_so_far, " ")
   for i := 0; i < 4; i++ {
-    c := (r.current+i)%4
+    c := (r.current + i) % 4
     p := r.players[c]
-    index := i+1
+    index := i + 1
     if index > 4 {
       index = 4
     }
@@ -142,7 +142,9 @@ func (r *Ravage) Round() {
   suit := plays[0][1]
   index := 0
   for i := 0; i < 4; i++ {
-    if plays[i][1] != suit { continue }
+    if plays[i][1] != suit {
+      continue
+    }
     if less(card(plays[index]), card(plays[i])) {
       index = i
     }

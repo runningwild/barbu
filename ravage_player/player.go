@@ -1,17 +1,18 @@
 package main
 
 import (
-  "sort"
-  "fmt"
   "bufio"
-  "os"
-  "strings"
   "flag"
+  "fmt"
+  "os"
+  "sort"
+  "strings"
 )
 
 var mode = flag.String("mode", "random", "What ai to use")
 
 var rank_map map[byte]int
+
 func init() {
   rank_map = map[byte]int{
     '2': 1,
@@ -31,6 +32,7 @@ func init() {
 }
 
 type handOfCards []string
+
 func (h handOfCards) Len() int {
   return len(h)
 }
@@ -68,15 +70,15 @@ func randomPlayer() {
       for i := range cards {
         if cards[i][1] == suit {
           play = cards[i]
-          cards[i] = cards[len(cards) - 1]
-          cards = cards[0 : len(cards) - 1]
+          cards[i] = cards[len(cards)-1]
+          cards = cards[0 : len(cards)-1]
           break
         }
       }
     }
     if play == "" {
-      play = cards[len(cards) - 1]
-      cards = cards[0 : len(cards) - 1]
+      play = cards[len(cards)-1]
+      cards = cards[0 : len(cards)-1]
     }
     fmt.Fprintf(os.Stdout, "%s\n", play)
 
@@ -124,7 +126,7 @@ func stupidPlayer() {
       cards := suits[suit]
       if len(cards) > 0 {
         if rank_map[cards[0][0]] > rank_map[highest_rank] {
-          play = cards[len(cards) - 1]
+          play = cards[len(cards)-1]
         } else {
           var index int
           for index = len(cards) - 1; index >= 0; index-- {
@@ -133,9 +135,9 @@ func stupidPlayer() {
             }
           }
           play = cards[index]
-          cards[index] = cards[len(cards) - 1]
+          cards[index] = cards[len(cards)-1]
         }
-        cards = cards[0 : len(cards) - 1]
+        cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
         suits[suit] = cards
       }
@@ -148,15 +150,17 @@ func stupidPlayer() {
         var suit, max_suit byte
         var cards []string
         for suit, cards = range suits {
-          if len(cards) == 0 { continue }
-          if rank_map[cards[len(cards) - 1][0]] > max_rank {
-            max_rank = rank_map[cards[len(cards) - 1][0]]
+          if len(cards) == 0 {
+            continue
+          }
+          if rank_map[cards[len(cards)-1][0]] > max_rank {
+            max_rank = rank_map[cards[len(cards)-1][0]]
             max_suit = suit
           }
         }
         cards = suits[max_suit]
-        play = cards[len(cards) - 1]
-        cards = cards[0 : len(cards) - 1]
+        play = cards[len(cards)-1]
+        cards = cards[0 : len(cards)-1]
         suits[max_suit] = cards
       } else {
         // We're leading, so play the lowest rank card from the suit that we
@@ -171,8 +175,8 @@ func stupidPlayer() {
         }
         cards = suits[min_suit]
         play = cards[0]
-        cards[0] = cards[len(cards) - 1]
-        cards = cards[0 : len(cards) - 1]
+        cards[0] = cards[len(cards)-1]
+        cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
         suits[min_suit] = cards
       }
@@ -186,33 +190,33 @@ func stupidPlayer() {
 
 type cardStats struct {
   // map from rank to set of cards that have been played
-  by_rank    map[byte]map[byte]bool
+  by_rank map[byte]map[byte]bool
 
   // map from suit to set of cards that have been played
-  by_suit    map[byte]map[byte]bool
+  by_suit map[byte]map[byte]bool
 
   // map from suit to number of cards played so far in that suit
   suit_count map[byte]int
 
   // map from suit to set of players void in that suit
-  voids      map[byte]map[int]bool
+  voids map[byte]map[int]bool
 }
 
 func makeCardStats() *cardStats {
   var cs cardStats
 
-  cs.by_rank    = make(map[byte]map[byte]bool)
-  cs.by_suit    = make(map[byte]map[byte]bool)
+  cs.by_rank = make(map[byte]map[byte]bool)
+  cs.by_suit = make(map[byte]map[byte]bool)
   cs.suit_count = make(map[byte]int)
-  cs.voids      = make(map[byte]map[int]bool)
+  cs.voids = make(map[byte]map[int]bool)
 
   for rank := range rank_map {
     cs.by_rank[rank] = make(map[byte]bool)
   }
 
-  for _, suit := range []byte{'h','s','c','d'} {
+  for _, suit := range []byte{'h', 's', 'c', 'd'} {
     cs.by_suit[suit] = make(map[byte]bool)
-    cs.voids[suit]   = make(map[int]bool)
+    cs.voids[suit] = make(map[int]bool)
   }
 
   return &cs
@@ -236,6 +240,7 @@ func (cs *cardStats) Trick(cards []string) {
 }
 
 var store *os.File
+
 func init() {
   var err error
   store, err = os.Create("replay.txt")
@@ -285,7 +290,7 @@ func smarterPlayer() {
       cards := suits[suit]
       if len(cards) > 0 {
         if rank_map[cards[0][0]] > rank_map[highest_rank] {
-          play = cards[len(cards) - 1]
+          play = cards[len(cards)-1]
         } else {
           var index int
           for index = len(cards) - 1; index >= 0; index-- {
@@ -294,9 +299,9 @@ func smarterPlayer() {
             }
           }
           play = cards[index]
-          cards[index] = cards[len(cards) - 1]
+          cards[index] = cards[len(cards)-1]
         }
-        cards = cards[0 : len(cards) - 1]
+        cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
         suits[suit] = cards
       }
@@ -309,15 +314,17 @@ func smarterPlayer() {
         var suit, max_suit byte
         var cards []string
         for suit, cards = range suits {
-          if len(cards) == 0 || len(cards) >= 4 { continue }
-          if rank_map[cards[len(cards) - 1][0]] > max_rank {
-            max_rank = rank_map[cards[len(cards) - 1][0]]
+          if len(cards) == 0 || len(cards) >= 4 {
+            continue
+          }
+          if rank_map[cards[len(cards)-1][0]] > max_rank {
+            max_rank = rank_map[cards[len(cards)-1][0]]
             max_suit = suit
           }
         }
         cards = suits[max_suit]
-        play = cards[len(cards) - 1]
-        cards = cards[0 : len(cards) - 1]
+        play = cards[len(cards)-1]
+        cards = cards[0 : len(cards)-1]
         suits[max_suit] = cards
       } else {
         // We're leading, so play the lowest rank card from the suit that we
@@ -332,8 +339,8 @@ func smarterPlayer() {
         }
         cards = suits[min_suit]
         play = cards[0]
-        cards[0] = cards[len(cards) - 1]
-        cards = cards[0 : len(cards) - 1]
+        cards[0] = cards[len(cards)-1]
+        cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
         suits[min_suit] = cards
       }
@@ -347,7 +354,7 @@ func smarterPlayer() {
 
 func main() {
   flag.Parse()
-  valid_modes := map[string]func() {
+  valid_modes := map[string]func(){
     "random":  randomPlayer,
     "stupid":  stupidPlayer,
     "smarter": smarterPlayer,

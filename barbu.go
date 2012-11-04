@@ -1,19 +1,20 @@
 package main
 
 import (
-  "strings"
-  "fmt"
-  "flag"
-  "runtime/pprof"
-  "io"
-  "os"
   "bufio"
-  "time"
+  "flag"
+  "fmt"
+  "io"
   "math/rand"
+  "os"
   "os/exec"
+  "runtime/pprof"
+  "strings"
+  "time"
 )
 
 var rank_map map[byte]int
+
 func init() {
   rand.Seed(time.Now().UnixNano())
   rank_map = map[byte]int{
@@ -43,20 +44,22 @@ var player_names = []*string{
   flag.String("player4", "", "command to run for player 4"),
 }
 
-var suits = []byte{'s','h','c','d'}
-var ranks = []byte{'2','3','4','5','6','7','8','9','t','j','q','k','a'}
+var suits = []byte{'s', 'h', 'c', 'd'}
+var ranks = []byte{'2', '3', '4', '5', '6', '7', '8', '9', 't', 'j', 'q', 'k', 'a'}
 
 type card string
+
 func less(a, b card) bool {
   return rank_map[a[0]] < rank_map[b[0]]
 }
+
 type Deck []card
 
 func (d Deck) String() string {
   var s string
   for i := range d {
     s = s + string(d[i])
-    if i < len(d) - 1 {
+    if i < len(d)-1 {
       s = s + " "
     }
   }
@@ -80,7 +83,7 @@ func makeDeck() Deck {
 }
 
 type Player interface {
-  Stdin()  io.Writer
+  Stdin() io.Writer
   Stdout() *bufio.Reader
   Stderr() *bufio.Reader
   Close()
@@ -91,6 +94,7 @@ type termPlayer struct {
   // receive start of trick and rest of trick
   // send play
 }
+
 func MakeTermPlayer() Player {
   var tp termPlayer
   go tp.routine()
@@ -108,11 +112,12 @@ func (tp *termPlayer) Stderr() *bufio.Reader {
 }
 
 type aiPlayer struct {
-  cmd *exec.Cmd
+  cmd    *exec.Cmd
   stdin  io.Writer
   stdout *bufio.Reader
   stderr *bufio.Reader
 }
+
 func (a *aiPlayer) Stdin() io.Writer {
   return a.stdin
 }
@@ -180,7 +185,6 @@ func main() {
     }
   }
 
-
   var total [4]int
   N := 100
   for i := 0; i < N; i++ {
@@ -202,21 +206,12 @@ func main() {
     scores := r.Score()
     for i := range scores {
       total[i] += scores[i]
-//      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
+      //      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
       players[i].Close()
     }
   }
   fmt.Printf("Averages:\n")
   for i := range total {
-    fmt.Printf("Player %d: %.2f\n", i, float64(total[i]) / float64(N))
+    fmt.Printf("Player %d: %.2f\n", i, float64(total[i])/float64(N))
   }
 }
-
-
-
-
-
-
-
-
-
