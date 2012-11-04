@@ -23,7 +23,7 @@ type Ravage struct {
   current int
 }
 
-func MakeRavage(players [4]Player, deck Deck) *Ravage {
+func MakeRavage(players [4]Player, deck Deck) BarbuGame {
   var r Ravage
   r.players = players
   r.deck = deck
@@ -105,7 +105,7 @@ func (r *Ravage) Score() [4]int {
   return scores
 }
 
-func (r *Ravage) Round() {
+func (r *Ravage) Round() bool {
   var trick_so_far string
 
   // Have everyone play their card for the trick
@@ -154,4 +154,6 @@ func (r *Ravage) Round() {
   for i := range plays {
     r.tricks[r.current] = append(r.tricks[r.current], card(plays[i]))
   }
+
+  return len(r.hands[0]) == 0
 }

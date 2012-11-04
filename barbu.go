@@ -9,6 +9,7 @@ import (
   "os"
   "os/exec"
   "runtime/pprof"
+  "sort"
   "strings"
   "time"
 )
@@ -43,6 +44,8 @@ var player_names = []*string{
   flag.String("player3", "", "command to run for player 3"),
   flag.String("player4", "", "command to run for player 4"),
 }
+
+var game = flag.String("game", "", "The barbu game to run")
 
 var suits = []byte{'s', 'h', 'c', 'd'}
 var ranks = []byte{'2', '3', '4', '5', '6', '7', '8', '9', 't', 'j', 'q', 'k', 'a'}
@@ -185,6 +188,19 @@ func main() {
     }
   }
 
+  makers := map[string]func([4]Player, Deck) BarbuGame{
+    "ravage": MakeRavage,
+  }
+  game_maker, ok := makers[*game]
+  if !ok {
+    var names []string
+    for name := range makers {
+      names = append(names, name)
+    }
+    sort.Strings(names)
+    fmt.Printf("'%s' is not a valid game.  Valid games are %v.\n", names)
+  }
+
   var total [4]int
   N := 100
   for i := 0; i < N; i++ {
@@ -198,12 +214,11 @@ func main() {
       }
     }
 
-    r := MakeRavage(players, makeDeck())
-    r.Deal()
-    for i := 0; i < 13; i++ {
-      r.Round()
+    the_game := game_maker(players, makeDeck())
+    the_game.Deal()
+    for !the_game.Round() {
     }
-    scores := r.Score()
+    scores := the_game.Score()
     for i := range scores {
       total[i] += scores[i]
       //      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
