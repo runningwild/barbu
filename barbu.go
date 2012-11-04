@@ -14,6 +14,28 @@ import (
   "time"
 )
 
+// profiling info
+var cpu_profile = flag.String("cpuprof", "", "file to write cpu profile to")
+
+var player_names = []*string{
+  flag.String("player1", "", "command to run for player 1"),
+  flag.String("player2", "", "command to run for player 2"),
+  flag.String("player3", "", "command to run for player 3"),
+  flag.String("player4", "", "command to run for player 4"),
+}
+
+var game = flag.String("game", "", "The barbu game to run")
+
+type BarbuGame interface {
+  Deal()
+  Round() bool   // returns true iff game is over
+  Score() [4]int // only call this after the game is over
+
+  // Given the string that a player would normally be given before choosing
+  // what to play, returns an array containing all valid plays
+  GetValidPlays(hand []string, lead string) []string
+}
+
 var rank_map map[byte]int
 
 func init() {
@@ -35,18 +57,6 @@ func init() {
   }
 }
 
-// profiling info
-var cpu_profile = flag.String("cpuprof", "", "file to write cpu profile to")
-
-var player_names = []*string{
-  flag.String("player1", "", "command to run for player 1"),
-  flag.String("player2", "", "command to run for player 2"),
-  flag.String("player3", "", "command to run for player 3"),
-  flag.String("player4", "", "command to run for player 4"),
-}
-
-var game = flag.String("game", "", "The barbu game to run")
-
 var suits = []byte{'s', 'h', 'c', 'd'}
 var ranks = []byte{'2', '3', '4', '5', '6', '7', '8', '9', 't', 'j', 'q', 'k', 'a'}
 
@@ -57,6 +67,12 @@ func less(a, b card) bool {
 }
 
 type Deck []card
+
+func (d Deck) Copy() Deck {
+  d2 := make(Deck, len(d))
+  copy(d2, d)
+  return d2
+}
 
 func (d Deck) String() string {
   var s string
@@ -163,6 +179,33 @@ func MakeAiPlayer(log_filename, name string) (Player, error) {
   return &p, nil
 }
 
+var perms = [][]int{
+  {0, 1, 2, 3},
+  {0, 1, 3, 2},
+  {0, 2, 1, 3},
+  {0, 2, 3, 1},
+  {0, 3, 1, 2},
+  {0, 3, 2, 1},
+  {1, 0, 2, 3},
+  {1, 0, 3, 2},
+  {1, 2, 0, 3},
+  {1, 2, 3, 0},
+  {1, 3, 0, 2},
+  {1, 3, 2, 0},
+  {2, 0, 1, 3},
+  {2, 0, 3, 1},
+  {2, 1, 0, 3},
+  {2, 1, 3, 0},
+  {2, 3, 0, 1},
+  {2, 3, 1, 0},
+  {3, 0, 1, 2},
+  {3, 0, 2, 1},
+  {3, 1, 0, 2},
+  {3, 1, 2, 0},
+  {3, 2, 0, 1},
+  {3, 2, 1, 0},
+}
+
 func main() {
   flag.Parse()
   for i := range player_names {
@@ -204,29 +247,36 @@ func main() {
   var total [4]int
   N := 100
   for i := 0; i < N; i++ {
-    var players [4]Player
-    var err error
-    for i := range player_names {
-      players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
-      if err != nil {
-        fmt.Printf("Error: %v\n", err)
-        return
+    deck := makeDeck()
+    for _, perm := range perms {
+      var orig_players [4]Player
+      var err error
+      for i := range player_names {
+        orig_players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
+        if err != nil {
+          fmt.Printf("Error: %v\n", err)
+          return
+        }
       }
-    }
+      var players [4]Player
+      for i := range players {
+        players[i] = orig_players[perm[i]]
+      }
 
-    the_game := game_maker(players, makeDeck())
-    the_game.Deal()
-    for !the_game.Round() {
-    }
-    scores := the_game.Score()
-    for i := range scores {
-      total[i] += scores[i]
-      //      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
-      players[i].Close()
+      the_game := game_maker(players, deck.Copy())
+      the_game.Deal()
+      for !the_game.Round() {
+      }
+      scores := the_game.Score()
+      for i := range scores {
+        total[i] += scores[i]
+        //      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
+        players[i].Close()
+      }
     }
   }
   fmt.Printf("Averages:\n")
   for i := range total {
-    fmt.Printf("Player %d: %.2f\n", i, float64(total[i])/float64(N))
+    fmt.Printf("Player %d: %.2f\n", i, float64(total[i])/float64(N*len(perms)))
   }
 }

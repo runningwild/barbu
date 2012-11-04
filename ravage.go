@@ -5,16 +5,6 @@ import (
   "strings"
 )
 
-type BarbuGame interface {
-  Deal()
-  Round() bool   // returns true iff game is over
-  Score() [4]int // only call this after the game is over
-
-  // Given the string that a player would normally be given before choosing
-  // what to play, returns an array containing all valid plays
-  GetValidPlays(hand []string, lead string) []string
-}
-
 type Ravage struct {
   players [4]Player
   hands   [4]map[card]bool
