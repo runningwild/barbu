@@ -19,11 +19,13 @@ func MakeRavage(players [4]Player, deck Deck) BarbuGame {
   r.deck = deck
   for i := range players {
     go func(n int, p Player) {
-      line, _, err := p.Stderr().ReadLine()
-      if err != nil {
-        return
+      for {
+        line, _, err := p.Stderr().ReadLine()
+        if err != nil {
+          return
+        }
+        fmt.Printf("Error player(%d): %s\n", n, line)
       }
-      fmt.Printf("Error player(%d): %s\n", n, line)
     }(i, players[i])
   }
   return &r
