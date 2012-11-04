@@ -6,6 +6,7 @@ import (
 )
 
 type Ravage struct {
+  StandardTrickTakingGame
   players [4]Player
   hands   [4]map[card]bool
   tricks  [4][]card
@@ -29,23 +30,6 @@ func MakeRavage(players [4]Player, deck Deck) BarbuGame {
     }(i, players[i])
   }
   return &r
-}
-
-func (r *Ravage) GetValidPlays(hand []string, lead string) []string {
-  if len(lead) == 0 {
-    return hand
-  }
-  suit := strings.Split(lead, " ")[0][1]
-  var valid []string
-  for _, card := range hand {
-    if card[1] == suit {
-      valid = append(valid, card)
-    }
-  }
-  if len(valid) == 0 {
-    return hand
-  }
-  return valid
 }
 
 func (r *Ravage) Deal() {

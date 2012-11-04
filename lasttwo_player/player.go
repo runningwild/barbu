@@ -118,6 +118,54 @@ func stupidPlayer() {
       for i, card := range cards {
         fmt.Errorf("card: '%s'\n", card)
         if suit == 255 || card[1] == suit {
+          if play_index == -1 || rank_map[card[0]] < rank_map[cards[play_index][0]] {
+            play_index = i
+          }
+        }
+      }
+
+      // If we repeat this loop (because we didn't find a match) we will now
+      // relax the requirement on following suit because we were unable to do
+      // so.
+      suit = 255
+    }
+    fmt.Fprintf(os.Stdout, "%s\n", cards[play_index])
+    cards[play_index] = cards[len(cards)-1]
+    cards = cards[0 : len(cards)-1]
+
+    // Read in the rest of the trick
+    input.ReadLine()
+  }
+}
+
+func smartPlayer() {
+  input := bufio.NewReader(os.Stdin)
+  // Read in hand
+  line, _, err := input.ReadLine()
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "Error: %v\n")
+    return
+  }
+  cards := strings.Split(string(line), " ")
+
+  for count := 0; count < 13; count++ {
+    // Read in beginning of trick
+    line, _, err := input.ReadLine()
+    if err != nil {
+      fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+      return
+    }
+    trick_start := strings.Fields(string(line))
+
+    play_index := -1
+    var suit byte = 255
+    if len(trick_start) > 0 {
+      suit = trick_start[0][1]
+    }
+    for play_index == -1 {
+      for i, card := range cards {
+        fmt.Errorf("card: '%s'\n", card)
+        if suit == 255 || card[1] == suit {
           if play_index == -1 || rank_map[card[0]] > rank_map[cards[play_index][0]] {
             play_index = i
           }
@@ -141,8 +189,9 @@ func stupidPlayer() {
 func main() {
   flag.Parse()
   valid_modes := map[string]func(){
-    "random": randomPlayer,
-    "stupid": stupidPlayer,
+    "random":  randomPlayer,
+    "stupid":  stupidPlayer,
+    "smarter": smartPlayer,
   }
   if f, ok := valid_modes[*mode]; ok {
     f()

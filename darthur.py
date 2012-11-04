@@ -74,19 +74,11 @@ class CardSet:
 
 class RavagePlayer:
   def __init__(self, hand_cards):
-    self.hand_ = CardSet(hand_cards)
     self.remaining_cards_ = CardSet.CompleteDeck()
+    self.hand_ = CardSet(hand_cards)
     self.taken_by_suit_ = [0, 0, 0, 0]
     for card in hand_cards:
       self.remaining_cards_.RemoveCard(card)
-
-  def PrintDebugInfo(self):
-    print 'Hand = %s' % self.hand_
-    print 'Remaining cards = %s' % self.remaining_cards_
-    print 'Taken by suit = %s' % self.taken_by_suit_
-
-  def IsDone(self):
-    return self.hand_.GetNumCards() == 0
 
   def LeadTrick(self):
     best_card, best_goodness = None, 0
@@ -156,16 +148,17 @@ class RavagePlayer:
 
 hand_cards = Card.ListFromString(sys.stdin.readline())
 player = RavagePlayer(hand_cards)
+for _ in range(13):
 while True:
-  if player.IsDone(): break
   line = sys.stdin.readline()
-  if line == 'quit': break
+  if line == 'quit' or not line: break
   new_trick = Card.ListFromString(line)
   if new_trick:
     play = player.FollowTrick(new_trick)
   else:
     play = player.LeadTrick()
   print str(play)
+
   sys.stdout.flush()
   rest_of_trick = Card.ListFromString(sys.stdin.readline())
   whole_trick = new_trick + [play] + rest_of_trick

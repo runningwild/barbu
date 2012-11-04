@@ -4,6 +4,7 @@ import (
   "bufio"
   "flag"
   "fmt"
+  "math/rand"
   "os"
   "sort"
   "strings"
@@ -64,23 +65,25 @@ func randomPlayer() {
       return
     }
     trick_start := strings.Split(string(line), " ")
-    var play string
+    play_index := -1
     if len(line) > 0 {
       suit := trick_start[0][1]
+      hits := 0
       for i := range cards {
         if cards[i][1] == suit {
-          play = cards[i]
-          cards[i] = cards[len(cards)-1]
-          cards = cards[0 : len(cards)-1]
-          break
+          hits++
+          if rand.Float64() <= 1/float64(hits) {
+            play_index = i
+          }
         }
       }
     }
-    if play == "" {
-      play = cards[len(cards)-1]
-      cards = cards[0 : len(cards)-1]
+    if play_index == -1 {
+      play_index = rand.Intn(len(cards))
     }
-    fmt.Fprintf(os.Stdout, "%s\n", play)
+    fmt.Fprintf(os.Stdout, "%s\n", cards[play_index])
+    cards[play_index] = cards[len(cards)-1]
+    cards = cards[0 : len(cards)-1]
 
     // Read in the rest of the trick
     input.ReadLine()
@@ -236,16 +239,6 @@ func (cs *cardStats) Trick(cards []string) {
     if cards[i][1] != lead {
       cs.voids[lead][i] = true
     }
-  }
-}
-
-var store *os.File
-
-func init() {
-  var err error
-  store, err = os.Create("replay.txt")
-  if err != nil {
-    panic(err)
   }
 }
 
