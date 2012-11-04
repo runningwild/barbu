@@ -150,7 +150,7 @@ func (r *Ravage) Round() {
     }
   }
 
-  r.current = index
+  r.current = (r.current + index) % 4
   for i := range plays {
     r.tricks[r.current] = append(r.tricks[r.current], card(plays[i]))
   }
