@@ -38,6 +38,25 @@ type BarbuGame interface {
   GetValidPlays(hand []string, lead string) []string
 }
 
+type StandardTrickTakingGame struct{}
+
+func (StandardTrickTakingGame) GetValidPlays(hand []string, lead string) []string {
+  if len(lead) == 0 {
+    return hand
+  }
+  suit := strings.Split(lead, " ")[0][1]
+  var valid []string
+  for _, card := range hand {
+    if card[1] == suit {
+      valid = append(valid, card)
+    }
+  }
+  if len(valid) == 0 {
+    return hand
+  }
+  return valid
+}
+
 var rank_map map[byte]int
 
 func init() {
@@ -234,7 +253,8 @@ func main() {
   }
 
   makers := map[string]func([4]Player, Deck) BarbuGame{
-    "ravage": MakeRavage,
+    "ravage":  MakeRavage,
+    "lasttwo": MakeLastTwo,
   }
   game_maker, ok := makers[*game]
   if !ok {
@@ -267,14 +287,17 @@ func main() {
       for i := range players {
         players[i] = orig_players[perm[i]]
       }
-
+      var perm_invert [4]int
+      for i := range perm {
+        perm_invert[perm[i]] = i
+      }
       the_game := game_maker(players, deck.Copy())
       the_game.Deal()
       for !the_game.Round() {
       }
       scores := the_game.Score()
       for i := range scores {
-        total[i] += scores[i]
+        total[i] += scores[perm_invert[i]]
         //      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
         players[i].Close()
       }
