@@ -182,7 +182,7 @@ func main() {
 
 
   var total [4]int
-  N := 1000
+  N := 100
   for i := 0; i < N; i++ {
     var players [4]Player
     var err error
@@ -202,7 +202,7 @@ func main() {
     scores := r.Score()
     for i := range scores {
       total[i] += scores[i]
-      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
+//      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
       players[i].Close()
     }
   }
