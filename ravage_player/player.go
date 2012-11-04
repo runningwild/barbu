@@ -250,8 +250,6 @@ func init() {
 }
 
 func smarterPlayer() {
-  defer store.Close()
-  // cs := makeCardStats()
   input := bufio.NewReader(os.Stdin)
   // Read in hand
   line, _, err := input.ReadLine()
@@ -259,7 +257,6 @@ func smarterPlayer() {
     fmt.Fprintf(os.Stderr, "Error: %v\n")
     return
   }
-  fmt.Fprintf(store, "Hand: %s\n", line)
   cards := strings.Split(string(line), " ")
   suits := make(map[byte][]string)
   for i := range cards {
@@ -276,7 +273,6 @@ func smarterPlayer() {
       fmt.Fprintf(os.Stderr, "Error: %v\n", err)
       return
     }
-    fmt.Fprintf(store, "Trick: %s\n", line)
     trick_start := strings.Fields(string(line))
     var play string
     if len(trick_start) > 0 {
@@ -309,23 +305,20 @@ func smarterPlayer() {
     if play == "" {
       if len(trick_start) > 0 {
         // We weren't able to follow suit, so play the highest rank card
-        // available
-        max_rank := 0
-        var suit, max_suit byte
-        var cards []string
-        for suit, cards = range suits {
-          if len(cards) == 0 || len(cards) >= 4 {
-            continue
-          }
-          if rank_map[cards[len(cards)-1][0]] > max_rank {
-            max_rank = rank_map[cards[len(cards)-1][0]]
-            max_suit = suit
+        // from the suit that we have the least cards in.
+        min := 1000
+        var suit, min_suit byte
+        for suit = range suits {
+          if len(suits[suit]) < min && len(suits[suit]) > 0 {
+            min = len(suits[suit])
+            min_suit = suit
           }
         }
-        cards = suits[max_suit]
+        cards = suits[min_suit]
         play = cards[len(cards)-1]
         cards = cards[0 : len(cards)-1]
-        suits[max_suit] = cards
+        sort.Sort(handOfCards(cards))
+        suits[min_suit] = cards
       } else {
         // We're leading, so play the lowest rank card from the suit that we
         // have the least cards in.
@@ -346,7 +339,7 @@ func smarterPlayer() {
       }
     }
     fmt.Fprintf(os.Stdout, "%s\n", play)
-    fmt.Fprintf(store, "Play: %s\n", play)
+
     // Read in the rest of the trick
     input.ReadLine()
   }
