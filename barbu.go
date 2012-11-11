@@ -231,9 +231,14 @@ func main() {
   flag.Parse()
   for i := range player_names {
     if player_names[i] == nil {
-      fmt.Fprintf(os.Stderr, "Must specify all 4 players\n")
+      fmt.Fprintf(os.Stderr, "Must specify all 4 players with --player1 - --player4\n")
       return
     }
+  }
+
+  if *game == "" {
+    fmt.Fprintf(os.Stderr, "Must specify a game with --game.\n")
+    return
   }
 
   if *cpu_profile != "" {
