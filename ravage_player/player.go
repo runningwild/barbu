@@ -4,6 +4,7 @@ import (
   "bufio"
   "flag"
   "fmt"
+  "github.com/runningwild/barbu/util"
   "math/rand"
   "os"
   "sort"
@@ -240,6 +241,20 @@ func (cs *cardStats) Trick(cards []string) {
   }
 }
 
+func getLeader(cards []string) int {
+  suit := cards[0][1]
+  best := -1
+  for i, card := range cards {
+    if card[1] != suit {
+      continue
+    }
+    if best == -1 || rank_map[card[0]] > rank_map[cards[best][0]] {
+      best = i
+    }
+  }
+  return 3 - len(cards) + best
+}
+
 func smarterPlayer(input *bufio.Reader) {
   // Read in hand
   line, _, err := input.ReadLine()
@@ -248,6 +263,7 @@ func smarterPlayer(input *bufio.Reader) {
     return
   }
   cards := strings.Split(string(line), " ")
+  stats := util.MakeStats(cards)
   suits := make(map[byte][]string)
   for i := range cards {
     suits[cards[i][1]] = append(suits[cards[i][1]], cards[i])
@@ -264,6 +280,7 @@ func smarterPlayer(input *bufio.Reader) {
       return
     }
     trick_start := strings.Fields(string(line))
+    stats.TrickStart(trick_start)
     var play string
     if len(trick_start) > 0 {
       highest_rank := trick_start[0][0]
@@ -294,44 +311,68 @@ func smarterPlayer(input *bufio.Reader) {
     }
     if play == "" {
       if len(trick_start) > 0 {
-        // We weren't able to follow suit, so play the highest rank card
-        // from the suit that we have the least cards in.
-        min := 1000
-        var suit, min_suit byte
-        for suit = range suits {
-          if len(suits[suit]) < min && len(suits[suit]) > 0 {
-            min = len(suits[suit])
-            min_suit = suit
+        // First check if we can screw someone
+        var suit, target_suit byte
+        target := getLeader(trick_start)
+        most := 0
+        if len(trick_start) == 3 {
+          for _, suit = range []byte{'c', 'd', 'h', 's'} {
+            if len(suits[suit]) == 0 {
+              continue
+            }
+            taken := stats.Taken(target, suit)
+            if taken >= most {
+              target_suit = suit
+              most = taken
+            }
           }
         }
-        cards = suits[min_suit]
+        if target_suit == 0 {
+          // We weren't able to follow suit, so play the highest rank card
+          // from the suit that we have the least cards in.
+          min := 1000
+          for suit = range suits {
+            if len(suits[suit]) < min && len(suits[suit]) > 0 {
+              min = len(suits[suit])
+              target_suit = suit
+            }
+          }
+        }
+
+        cards = suits[target_suit]
         play = cards[len(cards)-1]
         cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
-        suits[min_suit] = cards
+        suits[target_suit] = cards
       } else {
-        // We're leading, so play the lowest rank card from the suit that we
-        // have the least cards in.
+        // We're leading
         min := 1000
-        var suit, min_suit byte
+        var suit, target_suit byte
         for suit = range suits {
           if len(suits[suit]) < min && len(suits[suit]) > 0 {
             min = len(suits[suit])
-            min_suit = suit
+            target_suit = suit
           }
         }
-        cards = suits[min_suit]
+        cards = suits[target_suit]
         play = cards[0]
         cards[0] = cards[len(cards)-1]
         cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
-        suits[min_suit] = cards
+        suits[target_suit] = cards
       }
     }
+    stats.TrickPlay(play)
     fmt.Fprintf(os.Stdout, "%s\n", play)
 
     // Read in the rest of the trick
-    input.ReadLine()
+    line, _, err = input.ReadLine()
+    if err != nil {
+      fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+      return
+    }
+    trick_end := strings.Fields(string(line))
+    stats.TrickEnd(trick_end)
   }
 }
 
