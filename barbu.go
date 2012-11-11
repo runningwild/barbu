@@ -126,6 +126,7 @@ type Player interface {
   Stdin() io.Writer
   Stdout() *bufio.Reader
   Stderr() *bufio.Reader
+  Reset()
   Close()
 }
 
@@ -167,6 +168,9 @@ func (a *aiPlayer) Stdout() *bufio.Reader {
 func (a *aiPlayer) Stderr() *bufio.Reader {
   return a.stderr
 }
+func (a *aiPlayer) Reset() {
+  fmt.Fprintf(a.stdin, "RESET\n")
+}
 func (a *aiPlayer) Close() {
   a.cmd.Wait()
 }
@@ -197,6 +201,17 @@ func MakeAiPlayer(log_filename, name string) (Player, error) {
   p.stdin = io.MultiWriter(in, log)
   p.stdout = bufio.NewReader(out)
   p.stderr = bufio.NewReader(stderr)
+
+  go func() {
+    for {
+      line, _, err := p.Stderr().ReadLine()
+      if err != nil {
+        return
+      }
+      fmt.Printf("Error(%s): %s\n", name, line)
+    }
+  }()
+
   return &p, nil
 }
 
@@ -276,18 +291,18 @@ func main() {
   if !*all_perms {
     perms = [][]int{{0, 1, 2, 3}}
   }
+  var orig_players [4]Player
+  for i := range player_names {
+    var err error
+    orig_players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
+    if err != nil {
+      fmt.Printf("Error: %v\n", err)
+      return
+    }
+  }
   for i := 0; i < N; i++ {
     deck := makeDeck()
     for _, perm := range perms {
-      var orig_players [4]Player
-      var err error
-      for i := range player_names {
-        orig_players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
-        if err != nil {
-          fmt.Printf("Error: %v\n", err)
-          return
-        }
-      }
       var players [4]Player
       for i := range players {
         players[i] = orig_players[perm[i]]
@@ -297,14 +312,14 @@ func main() {
         perm_invert[perm[i]] = i
       }
       the_game := game_maker(players, deck.Copy())
+      fmt.Errorf("TheGame: %p\n", the_game)
       the_game.Deal()
       for !the_game.Round() {
       }
       scores := the_game.Score()
       for i := range scores {
         total[i] += scores[perm_invert[i]]
-        //      fmt.Printf("Scores: %d\t%d\t%d\t%d\n", scores[0], scores[1], scores[2], scores[3])
-        players[i].Close()
+        players[i].Reset()
       }
     }
   }

@@ -20,17 +20,6 @@ func MakeLastTwo(players [4]Player, deck Deck) BarbuGame {
   var bg LastTwo
   bg.players = players
   bg.deck = deck
-  for i := range players {
-    go func(n int, p Player) {
-      for {
-        line, _, err := p.Stderr().ReadLine()
-        if err != nil {
-          return
-        }
-        fmt.Printf("Error player(%d): %s\n", n, line)
-      }
-    }(i, players[i])
-  }
   return &bg
 }
 

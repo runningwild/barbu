@@ -47,8 +47,7 @@ func (h handOfCards) Swap(i, j int) {
   h[i], h[j] = h[j], h[i]
 }
 
-func randomPlayer() {
-  input := bufio.NewReader(os.Stdin)
+func randomPlayer(input *bufio.Reader) {
   // Read in hand
   line, _, err := input.ReadLine()
   if err != nil {
@@ -92,8 +91,7 @@ func randomPlayer() {
 
 // On a lead plays the highest rank in its largest suit
 // On a follow tries to duck, otherwise just plays its largest valid card
-func stupidPlayer() {
-  input := bufio.NewReader(os.Stdin)
+func stupidPlayer(input *bufio.Reader) {
   // Read in hand
   line, _, err := input.ReadLine()
   if err != nil {
@@ -242,8 +240,7 @@ func (cs *cardStats) Trick(cards []string) {
   }
 }
 
-func smarterPlayer() {
-  input := bufio.NewReader(os.Stdin)
+func smarterPlayer(input *bufio.Reader) {
   // Read in hand
   line, _, err := input.ReadLine()
   if err != nil {
@@ -340,13 +337,22 @@ func smarterPlayer() {
 
 func main() {
   flag.Parse()
-  valid_modes := map[string]func(){
+  valid_modes := map[string]func(*bufio.Reader){
     "random":  randomPlayer,
     "stupid":  stupidPlayer,
     "smarter": smarterPlayer,
   }
   if f, ok := valid_modes[*mode]; ok {
-    f()
+    buf := bufio.NewReader(os.Stdin)
+    for {
+      os.Stderr.Sync()
+      f(buf)
+      line, _, err := buf.ReadLine()
+      os.Stderr.Sync()
+      if string(line) != "RESET" || err != nil {
+        return
+      }
+    }
   } else {
     fmt.Fprintf(os.Stderr, "'%s' is not a valid mode, must be one of [", *mode)
     var modes []string
