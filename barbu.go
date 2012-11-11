@@ -126,7 +126,6 @@ type Player interface {
   Stdin() io.Writer
   Stdout() *bufio.Reader
   Stderr() *bufio.Reader
-  Reset()
   Close()
 }
 
@@ -167,9 +166,6 @@ func (a *aiPlayer) Stdout() *bufio.Reader {
 }
 func (a *aiPlayer) Stderr() *bufio.Reader {
   return a.stderr
-}
-func (a *aiPlayer) Reset() {
-  fmt.Fprintf(a.stdin, "RESET\n")
 }
 func (a *aiPlayer) Close() {
   a.cmd.Wait()
@@ -319,7 +315,6 @@ func main() {
       scores := the_game.Score()
       for i := range scores {
         total[i] += scores[perm_invert[i]]
-        players[i].Reset()
       }
     }
   }

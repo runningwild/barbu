@@ -24,6 +24,7 @@ func MakeRavage(players [4]Player, deck Deck) BarbuGame {
 func (r *Ravage) Deal() {
   hands := r.deck.Deal()
   for i := range r.players {
+    fmt.Fprintf(r.players[i].Stdin(), "RAVAGE\n")
     r.hands[i] = make(map[card]bool)
     for j := range hands[i] {
       r.hands[i][hands[i][j]] = true

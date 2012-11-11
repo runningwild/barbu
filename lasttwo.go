@@ -26,6 +26,7 @@ func MakeLastTwo(players [4]Player, deck Deck) BarbuGame {
 func (bg *LastTwo) Deal() {
   hands := bg.deck.Deal()
   for i := range bg.players {
+    fmt.Fprintf(bg.players[i].Stdin(), "LASTTWO\n")
     bg.hands[i] = make(map[card]bool)
     for j := range hands[i] {
       bg.hands[i][hands[i][j]] = true
