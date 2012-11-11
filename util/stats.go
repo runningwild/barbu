@@ -143,6 +143,10 @@ func (s *Stats) Taken(player int, suit byte) int {
   return count
 }
 
+func (s *Stats) RemainingInSuit(suit byte) int {
+  return s.remaining_suits[suit]
+}
+
 func (s *Stats) IsDefinitelyVoid(player int, suit byte) bool {
   return s.voids[player][suit]
 }

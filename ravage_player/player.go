@@ -346,20 +346,24 @@ func smarterPlayer(input *bufio.Reader) {
         suits[target_suit] = cards
       } else {
         // We're leading
-        min := 1000
-        var suit, target_suit byte
-        for suit = range suits {
-          if len(suits[suit]) < min && len(suits[suit]) > 0 {
-            min = len(suits[suit])
-            target_suit = suit
+        var best_suit byte
+        var best_ratio float64 = 1.0
+        for _, suit := range []byte{'c', 'd', 'h', 's'} {
+          if len(suits[suit]) == 0 {
+            continue
+          }
+          ratio := float64(len(suits[suit])) / (float64(stats.RemainingInSuit(suit) + len(suits[suit])))
+          if ratio < best_ratio {
+            best_ratio = ratio
+            best_suit = suit
           }
         }
-        cards = suits[target_suit]
+        cards = suits[best_suit]
         play = cards[0]
         cards[0] = cards[len(cards)-1]
         cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
-        suits[target_suit] = cards
+        suits[best_suit] = cards
       }
     }
     stats.TrickPlay(play)
