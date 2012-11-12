@@ -2,6 +2,8 @@ package base
 
 import (
   "flag"
+  "fmt"
+  "sort"
 )
 
 var mode = flag.String("mode", "random", "What ai to use")
@@ -25,17 +27,31 @@ func init() {
   }
 }
 
-type handOfCards []string
+type Hand []string
 
-func (h handOfCards) Len() int {
+func (h Hand) Len() int {
   return len(h)
 }
-func (h handOfCards) Less(i, j int) bool {
+func (h Hand) Less(i, j int) bool {
   if h[i][1] != h[j][1] {
     return h[i][1] < h[j][1]
   }
   return rank_map[h[i][0]] < rank_map[h[j][0]]
 }
-func (h handOfCards) Swap(i, j int) {
+func (h Hand) Swap(i, j int) {
   h[i], h[j] = h[j], h[i]
+}
+func (h *Hand) Remove(card string) {
+  for i := range *h {
+    if (*h)[i] == card {
+      (*h)[i] = (*h)[len((*h))-1]
+      (*h) = (*h)[0 : len((*h))-1]
+      sort.Sort((*h))
+      return
+    }
+  }
+  panic(fmt.Sprintf("Didn't find '%s' in the hand '%v'.\n", card, h))
+}
+func (h Hand) Sort() {
+  sort.Sort(h)
 }

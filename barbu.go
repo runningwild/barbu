@@ -129,28 +129,6 @@ type Player interface {
   Close()
 }
 
-type termPlayer struct {
-  // receive hand
-  // receive start of trick and rest of trick
-  // send play
-}
-
-func MakeTermPlayer() Player {
-  var tp termPlayer
-  go tp.routine()
-  return nil
-}
-func (tp *termPlayer) routine() {
-  // First get hand
-
-  for {
-
-  }
-}
-func (tp *termPlayer) Stderr() *bufio.Reader {
-  return bufio.NewReader(os.Stderr)
-}
-
 type aiPlayer struct {
   cmd    *exec.Cmd
   stdin  io.Writer
@@ -290,10 +268,14 @@ func main() {
   var orig_players [4]Player
   for i := range player_names {
     var err error
-    orig_players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
-    if err != nil {
-      fmt.Printf("Error: %v\n", err)
-      return
+    if *player_names[i] == "terminal" {
+      orig_players[i] = makeTermPlayer()
+    } else {
+      orig_players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
+      if err != nil {
+        fmt.Printf("Error: %v\n", err)
+        return
+      }
     }
   }
   for i := 0; i < N; i++ {
