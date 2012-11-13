@@ -237,18 +237,25 @@ func Smart(input *bufio.Reader) {
       }
       cards := suits[suit]
       if len(cards) > 0 {
-        if rank_map[cards[0][0]] > rank_map[highest_rank] {
-          play = cards[len(cards)-1]
+        var index int
+        if stats.Taken(3, suit) == 0 && stats.RemainingInSuit(suit) >= 11 {
+          index = len(cards) - 1
         } else {
-          var index int
-          for index = len(cards) - 1; index >= 0; index-- {
-            if rank_map[cards[index][0]] < rank_map[highest_rank] {
-              break
+          if rank_map[cards[0][0]] > rank_map[highest_rank] && len(trick_start) == 3 {
+            index = len(cards) - 1
+          } else {
+            for index = len(cards) - 1; index >= 0; index-- {
+              if rank_map[cards[index][0]] < rank_map[highest_rank] {
+                break
+              }
+            }
+            if index == -1 {
+              index = len(cards) - 1
             }
           }
-          play = cards[index]
-          cards[index] = cards[len(cards)-1]
         }
+        play = cards[index]
+        cards[index] = cards[len(cards)-1]
         cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
         suits[suit] = cards
@@ -304,8 +311,15 @@ func Smart(input *bufio.Reader) {
           }
         }
         cards = suits[best_suit]
-        play = cards[0]
-        cards[0] = cards[len(cards)-1]
+        var index int
+        if stats.Taken(3, best_suit) <= 2 && stats.RemainingInSuit(best_suit) >= 11 {
+          index = len(cards) - 1
+        } else {
+          index = 0
+        }
+
+        play = cards[index]
+        cards[index] = cards[len(cards)-1]
         cards = cards[0 : len(cards)-1]
         sort.Sort(handOfCards(cards))
         suits[best_suit] = cards
