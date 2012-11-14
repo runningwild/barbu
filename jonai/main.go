@@ -3,7 +3,7 @@ package main
 import (
   "bufio"
   "fmt"
-  "github.com/runningwild/barbu/ai/ravage"
+  "github.com/runningwild/barbu/jonai/ravage"
   "os"
 )
 
