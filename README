@@ -34,3 +34,20 @@ Stdin > 4h 6h
 In this example there are two tricks.  This ai was last to play in the first trick.  The four of spades was lead and this ai followed with the nine of spades.  Since this ai was last to play in the trick there are no cards listed after its play.  Since the player to this ai's right won the trick it is the only one that plays before it in the second trick.  It leads with the eight of hearts, this ai follows with the jack, and then the remaining two players' cards are given on the last line.
 
 After the 13 rounds another round may begin just as this one did with the name of the game on a single line.
+
+
+BUILDING:
+To build everything you'll need go and g++ installed.  Then just run make.bash.
+Here is something you might try to see how things work:
+
+./make.bash
+./barbu \
+--game ravage \
+--permute \
+--n 5 \
+--player1 bin/jonai \
+--player2 bin/jonai \
+--player3 bin/davidai \
+--player4 bin/davidai
+
+
