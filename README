@@ -1,0 +1,36 @@
+Cards are specified as two character strings, the first character is rank and the second character is suit.
+Ranks are 23456789tjqka
+Suids are cdhs
+
+Example cards:
+kh - king of hearts
+as - ace of spades
+2d - two of diamonds
+
+
+Ai protocol:
+
+An Ai is first given the name of the game on a single line, current games right now are RAVAGE and LASTTWO.
+
+After the game is specified the ai will be given its hand on a single line, 13 cards each separated by a space.
+Example:
+3h 6s 9c ks 2h kc td qd 5d 6h jh kh jd
+
+After that will be 13 rounds, each round goes as follows:
+The ai will receive a list of cards on a single line, each separated by a space.  These are the cards played by the other players so far this trick.  The cards are listed in the order they are played, so if the line is
+kc ac
+that means the player across from this ai lead with the king of clubs, the player to this ai's right played the ace of clubs, and now it is this ai's turn to play.
+This ai should write the card it wants to play to stdout, followed by a newline.
+After this the ai will receive a list of cards on a single line, each separated by a space.  These are the cards played by the rest of the players this trick.  The cards are listed in the order they are played.
+
+An example of a few rounds:
+Stdin > 4s ks as
+Stdout< 9s
+Stdin > 
+Stdin > 8h
+Stdout< jh
+Stdin > 4h 6h
+
+In this example there are two tricks.  This ai was last to play in the first trick.  The four of spades was lead and this ai followed with the nine of spades.  Since this ai was last to play in the trick there are no cards listed after its play.  Since the player to this ai's right won the trick it is the only one that plays before it in the second trick.  It leads with the eight of hearts, this ai follows with the jack, and then the remaining two players' cards are given on the last line.
+
+After the 13 rounds another round may begin just as this one did with the name of the game on a single line.
