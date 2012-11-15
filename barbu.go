@@ -24,6 +24,7 @@ var player_names = []*string{
   flag.String("player4", "", "command to run for player 4"),
 }
 
+var seed = flag.Int64("seed", 0, "Random seed - 0 uses current time.")
 var game = flag.String("game", "", "The barbu game to run")
 var num_games = flag.Int("n", 1, "Number of games")
 var all_perms = flag.Bool("permute", false, "Run all permutations for each deck (24 runs per deck).")
@@ -60,7 +61,6 @@ func (StandardTrickTakingGame) GetValidPlays(hand []string, lead string) []strin
 var rank_map map[byte]int
 
 func init() {
-  rand.Seed(time.Now().UnixNano())
   rank_map = map[byte]int{
     '2': 1,
     '3': 2,
@@ -116,7 +116,7 @@ func makeDeck() Deck {
     }
   }
   for i := range d {
-    k := rand.Intn(len(d))
+    k := rand.Intn(len(d)-i) + i
     d[i], d[k] = d[k], d[i]
   }
   return d
@@ -218,6 +218,13 @@ var perms = [][]int{
 
 func main() {
   flag.Parse()
+  if *seed != 0 {
+    rand.Seed(int64(*seed))
+  } else {
+    t := time.Now().UnixNano()
+    rand.Seed(t)
+  }
+
   for i := range player_names {
     if player_names[i] == nil {
       fmt.Fprintf(os.Stderr, "Must specify all 4 players with --player1 - --player4\n")
