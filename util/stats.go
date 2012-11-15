@@ -1,5 +1,10 @@
 package util
 
+import (
+  "fmt"
+  "sort"
+)
+
 var rank_map map[byte]int
 
 func init() {
@@ -18,6 +23,35 @@ func init() {
     'k': 12,
     'a': 13,
   }
+}
+
+type Hand []string
+
+func (h Hand) Len() int {
+  return len(h)
+}
+func (h Hand) Less(i, j int) bool {
+  if h[i][1] != h[j][1] {
+    return h[i][1] < h[j][1]
+  }
+  return rank_map[h[i][0]] < rank_map[h[j][0]]
+}
+func (h Hand) Swap(i, j int) {
+  h[i], h[j] = h[j], h[i]
+}
+func (h *Hand) Remove(card string) {
+  for i := range *h {
+    if (*h)[i] == card {
+      (*h)[i] = (*h)[len((*h))-1]
+      (*h) = (*h)[0 : len((*h))-1]
+      sort.Sort((*h))
+      return
+    }
+  }
+  panic(fmt.Sprintf("Didn't find '%s' in the hand '%v'.\n", card, h))
+}
+func (h Hand) Sort() {
+  sort.Sort(h)
 }
 
 type Stats struct {
@@ -133,10 +167,23 @@ func (s *Stats) TrickEnd(cards []string) {
 }
 
 // Returns the number of cards of the specified suit that a player has taken.
-func (s *Stats) Taken(player int, suit byte) int {
+const AnyPlayer = 200
+const AnySuit = 200
+const AnyRank = 200
+
+func (s *Stats) Taken(player int, rank, suit byte) int {
   count := 0
-  for _, card := range s.taken[player] {
-    if card[1] == suit {
+  for the_player, taken := range s.taken {
+    if player != the_player && player != AnyPlayer {
+      continue
+    }
+    for _, card := range taken {
+      if rank != card[0] && rank != AnyRank {
+        continue
+      }
+      if suit != card[1] && suit != AnySuit {
+        continue
+      }
       count++
     }
   }

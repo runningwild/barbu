@@ -2,12 +2,14 @@ package main
 
 import (
   "bufio"
+  "flag"
   "fmt"
   "github.com/runningwild/barbu/jonai/ravage"
   "os"
 )
 
 func main() {
+  flag.Parse()
   stdin := bufio.NewReader(os.Stdin)
   for {
     line, _, err := stdin.ReadLine()

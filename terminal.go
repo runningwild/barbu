@@ -4,7 +4,7 @@ import (
   "bufio"
   "bytes"
   "fmt"
-  "github.com/runningwild/barbu/ai/base"
+  "github.com/runningwild/barbu/util"
   "io"
   "strings"
 )
@@ -57,7 +57,7 @@ func (tp *termPlayer) routine() {
 
     hand_line := <-tp.stdin.c
     tp.stdin.finalizeWrite()
-    hand := base.Hand(strings.Fields(hand_line))
+    hand := util.Hand(strings.Fields(hand_line))
     hand.Sort()
 
     for i := 0; i < 13; i++ {
