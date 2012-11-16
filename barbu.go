@@ -277,6 +277,11 @@ func main() {
     var err error
     if *player_names[i] == "terminal" {
       orig_players[i] = makeTermPlayer()
+    } else if *player_names[i] == "net" {
+      orig_players[i], err = makeNetPlayer(i)
+      if err != nil {
+        panic(err)
+      }
     } else {
       orig_players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
       if err != nil {
