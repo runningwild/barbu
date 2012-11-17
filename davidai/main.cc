@@ -14,6 +14,7 @@ void RunTrickTakingPlayer(AbstractTrickTakingPlayer* player) {
     getline(cin, line);
     vector<Card> initial_cards = Card::ListFromString(line);
     Card play;
+    player->PrepareForTrick();
     if (initial_cards.empty()) {
       play = player->LeadTrick();
     } else if (player->hand().GetValues(initial_cards[0].suit()).size()) {
@@ -51,18 +52,3 @@ int main() {
     delete player;
   }
 }
-
-/*int main() {
-  while (true) {
-    string line;
-    getline(cin, line);
-    CardSet cs = CardSet(line);
-    AbstractTrickTakingPlayer* player = NULL;
-    player = new RavagePlayer(cs);
-    RunTrickTakingPlayer(player);
-    delete player;
-    if (!getline(cin, line)) return 0;
-    assert(line == "RESET");
-  }
-}
-*/

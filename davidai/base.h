@@ -154,6 +154,7 @@ class AbstractTrickTakingPlayer {
   bool IsDone() const { return hand_.GetNumCards() == 0; }
 
   // OVERRIDE THESE FUNCTIONS
+  virtual void PrepareForTrick() {}
   virtual Card LeadTrick() const = 0;
   virtual Card FollowTrick(const vector<Card>& played_cards) const = 0;
   virtual Card DiscardTrick(const vector<Card>& played_cards) const = 0;
