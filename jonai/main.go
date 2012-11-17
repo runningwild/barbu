@@ -22,7 +22,7 @@ func main() {
       ravage.Smart(stdin)
 
     case "LASTTWO":
-      panic("NOT IMPLEMENTED")
+      ravage.Smart(stdin)
 
     case "DONE":
       return

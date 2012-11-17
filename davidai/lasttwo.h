@@ -17,9 +17,9 @@ public:
       const vector<int>& remaining_values = remaining_cards().GetValues(suit);
       if (my_values.empty()) continue;
       double goodness = 0;
-      goodness = remaining_values.size() / my_values.size();
+      goodness = my_values.back();
       if (goodness > best_goodness) {
-	best_card = Card(suit, my_values[0]);
+	best_card = Card(suit, my_values.back());
 	best_goodness = goodness;
       }
     }
@@ -30,20 +30,8 @@ public:
   virtual Card FollowTrick(const vector<Card>& played_cards) const {
     int suit = played_cards[0].suit();
     int winner_value = played_cards[GetWinnerIndex(played_cards)].value();
-
-    int highest_duck_value = -1, lowest_win_value = -1;
     const vector<int>& my_values = hand().GetValues(suit);
-    for (int i = 0; i < my_values.size(); ++i) {
-      if (my_values[i] < winner_value)
-	highest_duck_value = my_values[i];
-      else if (lowest_win_value == -1)
-	lowest_win_value = my_values[i];
-    }
-
-    if (highest_duck_value != -1) return Card(suit, highest_duck_value);
-    assert(lowest_win_value != -1);
-    if (played_cards.size() == 3) return Card(suit, my_values.back());
-    return Card(suit, lowest_win_value);
+    return Card(suit, my_values.back());
   }
 
   virtual Card DiscardTrick(const vector<Card>& played_cards) const {
@@ -51,9 +39,8 @@ public:
     double best_goodness = -9999;
     for (int suit = 0; suit < 4; ++suit) {
       const vector<int>& my_values = hand().GetValues(suit);
-      const vector<int>& remaining_values = remaining_cards().GetValues(suit);
       if (my_values.empty()) continue;
-      double goodness = remaining_values.size() / my_values.size();
+      double goodness = my_values.back();
       if (goodness >= best_goodness) {
 	best_card = Card(suit, my_values.back());
 	best_goodness = goodness;
