@@ -116,7 +116,7 @@ func init() {
 //   }
 // }
 
-func Smart(stdin *bufio.Reader) {
+func SmartPlayer(stdin *bufio.Reader) {
   // Read in hand
   line, _, err := stdin.ReadLine()
   if err != nil {

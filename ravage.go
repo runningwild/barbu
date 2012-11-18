@@ -51,10 +51,10 @@ func (r *Ravage) Score() [4]int {
     for _, card := range r.tricks[i] {
       maxes[i][card[1]]++
       if maxes[i][card[1]] > badness[i] {
-        badness[i] = maxes[i][card[1]];
-	if badness[i] > max_badness {
-          max_badness = badness[i];
-	}
+        badness[i] = maxes[i][card[1]]
+        if badness[i] > max_badness {
+          max_badness = badness[i]
+        }
       }
     }
   }

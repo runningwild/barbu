@@ -4,7 +4,7 @@ import (
   "bufio"
   "flag"
   "fmt"
-  "github.com/runningwild/barbu/jonai/lasttwo"
+  // "github.com/runningwild/barbu/jonai/lasttwo"
   "github.com/runningwild/barbu/jonai/ravage"
   "os"
 )
@@ -23,7 +23,7 @@ func main() {
       ravage.Smart(stdin)
 
     case "LASTTWO":
-      lasttwo.Smart(stdin)
+      ravage.Smart(stdin)
 
     case "DONE":
       return
