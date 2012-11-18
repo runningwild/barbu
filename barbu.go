@@ -17,10 +17,10 @@ import (
 var cpu_profile = flag.String("cpuprof", "", "file to write cpu profile to")
 
 var player_names = []*string{
+  flag.String("player0", "", "command to run for player 0"),
   flag.String("player1", "", "command to run for player 1"),
   flag.String("player2", "", "command to run for player 2"),
   flag.String("player3", "", "command to run for player 3"),
-  flag.String("player4", "", "command to run for player 4"),
 }
 
 var seed = flag.Int64("seed", 0, "Random seed - 0 uses current time.")
@@ -237,8 +237,8 @@ func main() {
   }
 
   for i := range player_names {
-    if player_names[i] == nil {
-      fmt.Fprintf(os.Stderr, "Must specify all 4 players with --player1 - --player4\n")
+    if player_names[i] == nil || *player_names[i] == "" {
+      fmt.Fprintf(os.Stderr, "Must specify all 4 players with --player0 - --player3\n")
       return
     }
   }
