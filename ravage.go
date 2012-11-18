@@ -41,30 +41,34 @@ func (r *Ravage) Score() [4]int {
     return [4]int{0, 0, 0, 0}
   }
   var maxes [4]map[byte]int
+  badness := [4]int{0, 0, 0, 0}
+  max_badness := 0
+
   for i := range maxes {
     maxes[i] = make(map[byte]int)
   }
   for i := range r.tricks {
     for _, card := range r.tricks[i] {
       maxes[i][card[1]]++
+      if maxes[i][card[1]] > badness[i] {
+        badness[i] = maxes[i][card[1]];
+	if badness[i] > max_badness {
+          max_badness = badness[i];
+	}
+      }
     }
   }
-  max_max := 0
-  for i := range maxes {
-    if len(maxes[i]) > max_max {
-      max_max = len(maxes[i])
-    }
-  }
+
   num_maxes := 0
-  for i := range maxes {
-    if len(maxes[i]) == max_max {
+  for i := range badness {
+    if badness[i] == max_badness {
       num_maxes++
     }
   }
   screwedness := -36 / num_maxes
   scores := [4]int{0, 0, 0, 0}
   for i := range maxes {
-    if len(maxes[i]) == max_max {
+    if badness[i] == max_badness {
       scores[i] = screwedness
     }
   }
