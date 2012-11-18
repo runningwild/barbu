@@ -22,10 +22,6 @@ public:
       if (my_values.empty()) continue;
 
       double goodness = 1.0 * remaining_values.size() / my_values.size();
-      if (card_badness_[suit][0] > 0) {
-	goodness *= 2;
-      }
-
       if (goodness > best_goodness) {
 	best_card = Card(suit, my_values[0]);
 	if (my_values.size() > 1 &&
@@ -54,27 +50,6 @@ public:
 	lowest_win_index = i;
     }
 
-    /*    if (highest_duck_index > 0 ||
-	lowest_win_index == -1) {
-      return Card(suit, my_values[highest_duck_index]);
-    }
-    if (highest_duck_index == 0) {
-      if (card_badness_[suit][0] > 0 ||
-	  taken_by_suit_[suit] > 0) {
-	return Card(suit, my_values[highest_duck_index]);
-      }
-      }*/
-
-    if (highest_duck_index != -1 &&
-      card_badness_[suit][highest_duck_index] > 0) {
-      return Card(suit, my_values[highest_duck_index]);
-    }
-    if (lowest_win_index != -1) {
-      for (int i = lowest_win_index; i < card_badness_[suit].size(); ++i)
-	if (card_badness_[suit][i] >= 0.6)
-	  return Card(suit, my_values.back());
-    }
-
     if (highest_duck_index != -1) {
       return Card(suit, my_values[highest_duck_index]);
     }
@@ -94,8 +69,6 @@ public:
       const vector<int>& other_values = remaining_cards().GetValues(suit);
       if (my_values.empty()) continue;
       double goodness = 1000 - my_values.size();
-      if (suit_badness_[suit] > 0) goodness += 3;
-      if (card_badness_[suit][0] > 0) goodness += 3;
       if (other_values.empty()) goodness = 1;
       if (goodness >= best_goodness) {
 	best_card = Card(suit, my_values.back());
