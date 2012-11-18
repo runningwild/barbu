@@ -297,18 +297,13 @@ func main() {
       for i := range players {
         players[i] = orig_players[perm[i]]
       }
-      var perm_invert [4]int
-      for i := range perm {
-        perm_invert[perm[i]] = i
-      }
       the_game := game_maker(players, deck.Copy())
-      fmt.Errorf("TheGame: %p\n", the_game)
       the_game.Deal()
       for !the_game.Round() {
       }
       scores := the_game.Score()
       for i := range scores {
-        total[i] += scores[perm_invert[i]]
+        total[perm[i]] += scores[i]
       }
     }
   }
