@@ -4,14 +4,13 @@ import (
   "bufio"
   "flag"
   "fmt"
+  "github.com/runningwild/cmwc"
   "io"
-  "math/rand"
   "os"
   "os/exec"
   "runtime/pprof"
   "sort"
   "strings"
-  "time"
 )
 
 // profiling info
@@ -28,6 +27,8 @@ var seed = flag.Int64("seed", 0, "Random seed - 0 uses current time.")
 var game = flag.String("game", "", "The barbu game to run")
 var num_games = flag.Int("n", 1, "Number of games")
 var all_perms = flag.Bool("permute", false, "Run all permutations for each deck (24 runs per deck).")
+
+var rng *cmwc.Cmwc
 
 type BarbuGame interface {
   Deal()
@@ -89,6 +90,16 @@ func less(a, b card) bool {
 
 type Deck []card
 
+func (d Deck) Len() int {
+  return len(d)
+}
+func (d Deck) Less(i, j int) bool {
+  return d[i] < d[j]
+}
+func (d Deck) Swap(i, j int) {
+  d[i], d[j] = d[j], d[i]
+}
+
 func (d Deck) Copy() Deck {
   d2 := make(Deck, len(d))
   copy(d2, d)
@@ -116,7 +127,7 @@ func makeDeck() Deck {
     }
   }
   for i := range d {
-    k := rand.Intn(len(d)-i) + i
+    k := int(rng.Int63()%int64(len(d)-i)) + i
     d[i], d[k] = d[k], d[i]
   }
   return d
@@ -218,11 +229,11 @@ var perms = [][]int{
 
 func main() {
   flag.Parse()
+  rng = cmwc.MakeGoodCmwc()
   if *seed != 0 {
-    rand.Seed(int64(*seed))
+    rng.Seed(int64(*seed))
   } else {
-    t := time.Now().UnixNano()
-    rand.Seed(t)
+    rng.SeedWithDevRand()
   }
 
   for i := range player_names {
