@@ -173,7 +173,7 @@ class AbstractTrickTakingPlayer {
   int GetWinnerIndex(const vector<Card>& played_cards) const {
     assert(!played_cards.empty());
     int index = 0;
-    for (int i = 1; i < 4; ++i)
+    for (int i = 1; i < played_cards.size(); ++i)
       if (played_cards[i].suit() == played_cards[index].suit() &&
 	  played_cards[i].value() > played_cards[index].value())
 	index = i;
