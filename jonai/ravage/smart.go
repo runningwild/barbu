@@ -127,7 +127,7 @@ func Smart(input *bufio.Reader) {
         // First check if we can screw someone
         var suit, target_suit byte
         target := getLeader(trick_start)
-        most := 10
+        most := 6
         if len(trick_start) == 3 {
           for _, suit = range []byte{'c', 'd', 'h', 's'} {
             if len(suits[suit]) == 0 {
@@ -144,7 +144,8 @@ func Smart(input *bufio.Reader) {
           // We weren't able to follow suit, so play the highest rank card
           // from the suit that we have the least cards in.
           min := 1000
-          for suit = range suits {
+          for _, suit = range []byte{'c', 'd', 'h', 's'} {
+            // for suit = range suits {
             if len(suits[suit]) < min && len(suits[suit]) > 0 {
               min = len(suits[suit])
               target_suit = suit
