@@ -140,8 +140,8 @@ class CardSet {
 
 class AbstractTrickTakingPlayer {
  public:
-  AbstractTrickTakingPlayer(const CardSet& hand)
-    : hand_(hand),
+  AbstractTrickTakingPlayer(int seat, const CardSet& hand)
+    : seat_(seat), hand_(hand),
     remaining_cards_(CardSet::CompleteDeck()) {
     vector<Card> cards = hand.GetCards();
     for (int i = 0; i < cards.size(); ++i) {
@@ -149,6 +149,7 @@ class AbstractTrickTakingPlayer {
     }
   }
 
+  int seat() const { return seat_; }
   const CardSet& hand() const { return hand_; }
   const CardSet& remaining_cards() const { return remaining_cards_; }
   bool IsDone() const { return hand_.GetNumCards() == 0; }
@@ -181,6 +182,7 @@ class AbstractTrickTakingPlayer {
   }
 
  private:
+  int seat_;
   CardSet hand_, remaining_cards_;
 };
 

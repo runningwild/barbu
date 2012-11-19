@@ -5,8 +5,8 @@
 
 class RavagePlayer : public AbstractTrickTakingPlayer {
 public:
-  RavagePlayer(const CardSet& hand)
-    : AbstractTrickTakingPlayer(hand),
+  RavagePlayer(int seat, const CardSet& hand)
+    : AbstractTrickTakingPlayer(seat, hand),
       taken_by_suit_(4, 0) {}
 
   virtual void PrepareForTrick() {

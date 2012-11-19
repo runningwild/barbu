@@ -5,8 +5,8 @@
 
 class LastTwoPlayer : public AbstractTrickTakingPlayer {
 public:
-  LastTwoPlayer(const CardSet& hand)
-    : AbstractTrickTakingPlayer(hand),
+  LastTwoPlayer(int seat, const CardSet& hand)
+    : AbstractTrickTakingPlayer(seat, hand),
       taken_by_suit_(4, 0) {}
 
   virtual Card LeadTrick() const {
