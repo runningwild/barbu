@@ -4,10 +4,10 @@ import (
   "bufio"
   "flag"
   "fmt"
-  "strings"
-  // "github.com/runningwild/barbu/jonai/lasttwo"
+  "github.com/runningwild/barbu/jonai/lasttwo"
   "github.com/runningwild/barbu/jonai/ravage"
   "os"
+  "strings"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func main() {
       ravage.Smart(stdin, seating, hand)
 
     case "LASTTWO":
-      ravage.Smart(stdin, seating, hand)
+      lasttwo.Smart(stdin, seating, hand)
 
     case "DONE":
       return
