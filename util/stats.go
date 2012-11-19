@@ -53,6 +53,16 @@ func (h *Hand) Remove(card string) {
 func (h Hand) Sort() {
   sort.Sort(h)
 }
+func (h Hand) BySuit(suit byte) Hand {
+  var h2 Hand
+  for _, card := range h {
+    if card[1] == suit {
+      h2 = append(h2, card)
+    }
+  }
+  h2.Sort()
+  return h2
+}
 
 type Stats struct {
   // Seating of the player these stats are for
@@ -124,7 +134,6 @@ func MakeStats(seating int, hand []string) *Stats {
   return &s
 }
 
-// player: [0, 1, 2, 3] == [left, across, right, self]
 func (s *Stats) update(player int, card string) {
   if s.trick.played%4 == 0 {
     s.trick.played = 0
@@ -134,7 +143,7 @@ func (s *Stats) update(player int, card string) {
   s.trick.played++
 
   // This player didn't follow suit - they must be void
-  if player != 3 && card[1] != s.trick.lead {
+  if card[1] != s.trick.lead {
     s.voids[player][s.trick.lead] = true
   }
 

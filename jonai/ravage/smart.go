@@ -57,8 +57,83 @@ func getLeader(cards []string) int {
   return 3 - len(cards) + best
 }
 
+func goodEnoughToDouble(hand util.Hand) bool {
+  for _, suit := range []byte{'c', 'd', 'h', 's'} {
+    subhand := hand.BySuit(suit)
+    if subhand.Len() >= 2 && rank_map[subhand[len(subhand)-2][0]] >= rank_map['t'] {
+      return false
+    }
+  }
+  return true
+}
+
+func lead(hand util.Hand, stats *util.Stats) string {
+  lowest_ratio := 10.0
+  var card string
+  for _, suit := range []byte{'c', 'd', 'h', 's'} {
+    shand := hand.BySuit(suit)
+    if shand.Len() == 0 {
+      continue
+    }
+    ratio := float64(shand.Len()) / float64(stats.RemainingInSuit(suit))
+    if ratio < lowest_ratio {
+      lowest_ratio = ratio
+      card = shand[0]
+    }
+  }
+  return card
+}
+
+func follow(shand util.Hand, stats *util.Stats, trick []string) string {
+  high := trick[0]
+  for _, c := range trick {
+    if c[1] == trick[0][1] && rank_map[c[0]] > rank_map[high[0]] {
+      high = c
+    }
+  }
+  if rank_map[shand[0][0]] > rank_map[high[0]] {
+    return shand[len(shand)-1]
+  }
+  for i := len(shand) - 1; i >= 0; i-- {
+    if rank_map[shand[i][0]] < rank_map[high[0]] {
+      return shand[i]
+    }
+  }
+  panic("Should be unreachable.")
+}
+
+func discard(hand util.Hand, stats *util.Stats) string {
+  for _, suit := range []byte{'c', 'd', 'h', 's'} {
+    shand := hand.BySuit(suit)
+    if shand.Len() == 0 {
+      continue
+    }
+    if shand.Len() == 1 && stats.RemainingInSuit(suit) > 1 {
+      return shand[0]
+    }
+    if shand.Len() > 1 && rank_map[shand[len(shand)-1][0]]-rank_map[shand[len(shand)-2][0]] > 5 {
+      return shand[len(shand)-1]
+    }
+  }
+  best_ratio := 10.0
+  var best_card string
+  for _, suit := range []byte{'c', 'd', 'h', 's'} {
+    shand := hand.BySuit(suit)
+    if shand.Len() == 0 {
+      continue
+    }
+    ratio := float64(shand.Len()) / float64(stats.RemainingInSuit(suit))
+    if ratio < best_ratio {
+      best_ratio = ratio
+      best_card = shand[len(shand)-1]
+    }
+  }
+  return best_card
+}
+
 func Smart(input *bufio.Reader, seating int, shand []string) {
   hand := util.Hand(shand)
+  stats := util.MakeStats(seating, hand)
 
   // Do all of the doubling
   line, _, err := input.ReadLine()
@@ -77,18 +152,21 @@ func Smart(input *bufio.Reader, seating int, shand []string) {
     }
 
     if string(line) == "DOUBLE" {
-      switch seating {
-      case 0:
+      if goodEnoughToDouble(hand) {
+        switch seating {
+        case 0:
+          fmt.Printf("\n")
+        case 1:
+          fmt.Printf("0 2 3\n")
+        case 2:
+          fmt.Printf("0 1 3\n")
+        case 3:
+          fmt.Printf("0 1 2\n")
+        }
+      } else {
         fmt.Printf("\n")
-      case 1:
-        fmt.Printf("0\n")
-      case 2:
-        fmt.Printf("0\n")
-      case 3:
-        fmt.Printf("0 1 2\n")
       }
     }
-
     // TODO: Keep track of who doubled who so we can do something with it.
   }
 
@@ -122,18 +200,17 @@ func Smart(input *bufio.Reader, seating int, shand []string) {
         // play something
         var card string
         if len(trick) == 0 {
-          card = hand[0]
+          card = lead(hand, stats)
         } else {
-          for i := len(hand) - 1; i >= 0 && card == ""; i-- {
-            if hand[i][1] == trick[0][1] {
-              card = hand[i]
-            }
-          }
-          if card == "" {
+          shand := hand.BySuit(trick[0][1])
+          if shand.Len() > 0 {
+            card = follow(shand, stats, trick)
+          } else {
             // We only get here if we were unable to follow suit
-            card = hand[len(hand)-1]
+            card = discard(hand, stats)
           }
         }
+        stats.Played(seating, card)
         hand.Remove(card)
         fmt.Printf("%s\n", card)
       } else {
@@ -143,6 +220,7 @@ func Smart(input *bufio.Reader, seating int, shand []string) {
         if err != nil {
           panic(err)
         }
+        stats.Played(player, card)
         trick = append(trick, card)
       }
     }
