@@ -4,6 +4,7 @@ import (
   "bufio"
   "flag"
   "fmt"
+  "strings"
   // "github.com/runningwild/barbu/jonai/lasttwo"
   "github.com/runningwild/barbu/jonai/ravage"
   "os"
@@ -18,12 +19,31 @@ func main() {
       fmt.Errorf("ERROR: %v\n", err)
       return
     }
+    var seating int
+    _, err = fmt.Sscanf(string(line), "PLAYER %d", &seating)
+    if err != nil {
+      fmt.Errorf("ERROR: %v\n", err)
+      return
+    }
+
+    line, _, err = stdin.ReadLine()
+    if err != nil {
+      fmt.Errorf("ERROR: %v\n", err)
+      return
+    }
+    hand := strings.Fields(string(line))
+
+    line, _, err = stdin.ReadLine()
+    if err != nil {
+      fmt.Errorf("ERROR: %v\n", err)
+      return
+    }
     switch string(line) {
     case "RAVAGE":
-      ravage.Smart(stdin)
+      ravage.Smart(stdin, seating, hand)
 
     case "LASTTWO":
-      ravage.Smart(stdin)
+      ravage.Smart(stdin, seating, hand)
 
     case "DONE":
       return

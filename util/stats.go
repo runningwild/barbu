@@ -55,6 +55,9 @@ func (h Hand) Sort() {
 }
 
 type Stats struct {
+  // Seating of the player these stats are for
+  seating int
+
   // map from [player, suit] to whether that player is void in that suit
   voids map[int]map[byte]bool
 
@@ -79,12 +82,24 @@ type Stats struct {
 }
 
 // Creates a stats object with the knowledge of your hand.
-// All arrays are three elements: {left, across, right}
-func MakeStats(hand []string) *Stats {
+func MakeStats(seating int, hand []string) *Stats {
   var s Stats
+  s.seating = seating
   s.voids = make(map[int]map[byte]bool)
-  for i := 0; i <= 2; i++ {
+  for i := 0; i <= 3; i++ {
     s.voids[i] = make(map[byte]bool)
+  }
+
+  for _, suit := range []byte{'c', 'd', 'h', 's'} {
+    count := 0
+    for i := range hand {
+      if hand[i][1] == suit {
+        count++
+      }
+    }
+    if count == 0 {
+      s.voids[s.seating][suit] = true
+    }
   }
 
   s.remaining_suits = map[byte]int{
@@ -111,7 +126,8 @@ func MakeStats(hand []string) *Stats {
 
 // player: [0, 1, 2, 3] == [left, across, right, self]
 func (s *Stats) update(player int, card string) {
-  if s.trick.played == 0 {
+  if s.trick.played%4 == 0 {
+    s.trick.played = 0
     s.trick.lead = card[1]
   }
   s.trick.cards[player] = card
@@ -131,39 +147,8 @@ func (s *Stats) update(player int, card string) {
   }
 }
 
-// Updates Stats with cards played before you this trick, which may be empty.
-func (s *Stats) TrickStart(cards []string) {
-  s.trick.played = 0
-  for i, card := range cards {
-    player := i + (3 - len(cards))
-    s.update(player, card)
-  }
-}
-
-// Updates Stats with the card you played this trick
-func (s *Stats) TrickPlay(card string) {
-  s.update(3, card)
-}
-
-// Updates Stats with cards played after you this trick, which may be empty.
-func (s *Stats) TrickEnd(cards []string) {
-  for i, card := range cards {
-    s.update(i, card)
-  }
-
-  winner := -1
-  suit := s.trick.lead
-  for i, card := range s.trick.cards {
-    if card[1] != suit {
-      continue
-    }
-    if winner == -1 || rank_map[card[0]] > rank_map[s.trick.cards[winner][0]] {
-      winner = i
-    }
-  }
-  for _, card := range s.trick.cards {
-    s.taken[winner] = append(s.taken[winner], card)
-  }
+func (s *Stats) Played(player int, card string) {
+  s.update(player, card)
 }
 
 // Returns the number of cards of the specified suit that a player has taken.

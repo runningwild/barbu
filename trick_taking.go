@@ -1,0 +1,179 @@
+package main
+
+import (
+  "fmt"
+  "github.com/runningwild/barbu/util"
+  "strings"
+)
+
+type StandardDoubling struct {
+  Players []Player
+}
+
+func stringSliceToIntSlice(ss []string) []int {
+  var ns []int
+  for _, s := range ss {
+    var n int
+    _, err := fmt.Sscanf(s, "%d", &n)
+    if err == nil {
+      // TODO: What to do if there is an error here?
+      ns = append(ns, n)
+    }
+  }
+  return ns
+}
+
+func (d *StandardDoubling) Double() [4][4]int {
+  var ret [4][4]int
+  // TODO: ERROR CHECKING!
+
+  // Inform each player that doubling is starting
+  for i := range d.Players {
+    d.Players[i].Stdin().Write([]byte("DOUBLING\n"))
+  }
+
+  for i := range d.Players {
+    cur := (i + 1) % 4
+    // Tell player (i+1)%4 that it is their turn to double.
+    d.Players[cur].Stdin().Write([]byte("DOUBLE\n"))
+    line, _, _ := d.Players[cur].Stdout().ReadLine()
+    doubles := stringSliceToIntSlice(strings.Fields(string(line)))
+    for _, j := range doubles {
+      ret[cur][j]++
+      ret[j][cur]++
+    }
+
+    // TODO: Here is where we would check that the dealer only doubled players
+    // that doubled him.
+
+    // Tell each other player who that player doubled.
+    for j := range d.Players {
+      if j == cur {
+        continue
+      }
+      d.Players[j].Stdin().Write([]byte(fmt.Sprintf("%d DOUBLE", cur)))
+      for _, v := range doubles {
+        d.Players[j].Stdin().Write([]byte(fmt.Sprintf(" %d", v)))
+      }
+      d.Players[j].Stdin().Write([]byte("\n"))
+    }
+  }
+
+  return ret
+}
+
+type Trick struct {
+  // Which players lead / took the trick.
+  Lead, Took int
+
+  // Mapping from player number to the card that player played this trick.
+  Cards [4]string
+}
+
+type StandardTrickTaking struct {
+  Players []Player
+  Hands   []util.Hand
+  Tricks  []Trick
+}
+
+func (t *StandardTrickTaking) Run() {
+  leader := 0
+  for len(t.Hands[0]) > 0 {
+    // Let each player know that we're starting a new trick
+    for _, player := range t.Players {
+      player.Stdin().Write([]byte("TRICK\n"))
+    }
+
+    var trick Trick
+    trick.Lead = leader
+    for i := range t.Players {
+      cur := (i + leader) % 4
+      // Tell the current player that it is their turn to play
+      t.Players[cur].Stdin().Write([]byte("PLAY\n"))
+      line, _, _ := t.Players[cur].Stdout().ReadLine()
+
+      // TODO: check that line is properly formatted (i.e. exactly one card)
+      card := strings.Fields(string(line))[0]
+      t.Hands[cur].Remove(card)
+      trick.Cards[cur] = card
+
+      // Let all other players know what card this player played.
+      for j := range t.Players {
+        if j == cur {
+          continue
+        }
+        t.Players[j].Stdin().Write([]byte(fmt.Sprintf("%d %s\n", cur, card)))
+      }
+    }
+
+    // Note the winner
+    trick.Took = trick.Lead
+    high := trick.Cards[trick.Lead]
+    for i := range t.Players {
+      if trick.Cards[i][1] != high[1] {
+        continue
+      }
+      if rank_map[trick.Cards[i][0]] > rank_map[high[0]] {
+        high = trick.Cards[i]
+        trick.Took = i
+      }
+    }
+
+    leader = trick.Took
+    t.Tricks = append(t.Tricks, trick)
+  }
+}
+
+type NewRavage struct {
+  StandardDoubling
+  StandardTrickTaking
+}
+
+func MakeNewRavage(players []Player, hands [][]string) BarbuGame {
+  var r NewRavage
+  r.StandardDoubling.Players = players[:]
+  r.StandardTrickTaking.Players = players[:]
+  for _, hand := range hands {
+    r.StandardTrickTaking.Hands = append(r.StandardTrickTaking.Hands, util.Hand(hand))
+  }
+  return &r
+}
+
+func (r *NewRavage) Scores() [4]int {
+  player_suit_count := make([]map[byte]int, 4)
+  for i := range player_suit_count {
+    player_suit_count[i] = make(map[byte]int)
+  }
+  for _, trick := range r.StandardTrickTaking.Tricks {
+    for _, card := range trick.Cards {
+      player_suit_count[trick.Took][card[1]]++
+    }
+  }
+
+  player_maxes := make([]int, 4)
+  max := 0
+  num_maxes := 0
+  for i := range player_suit_count {
+    for _, count := range player_suit_count[i] {
+      if count > player_maxes[i] {
+        player_maxes[i] = count
+      }
+    }
+    if player_maxes[i] == max {
+      num_maxes++
+    }
+    if player_maxes[i] > max {
+      max = player_maxes[i]
+      num_maxes = 1
+    }
+  }
+
+  var ret [4]int
+  for i := range player_maxes {
+    if player_maxes[i] == max {
+      ret[i] = -36 / num_maxes
+    }
+  }
+  return ret
+
+}

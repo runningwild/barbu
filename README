@@ -1,3 +1,38 @@
+New Game Protocol:
+# This is the protocol for starting a game
+PLAYER 2  <- indicates which position around the table you are sitting
+as 2s 3s 4s 5s ... <- your hand
+# Eventually we should have a player choose a game - that should happen here.
+GAMENAME  <- name of the game
+# Each player gets a chance to double.  Slightly different than actual
+# barbu, you only get a chance to double once, if you are doubled after
+# then you do not get another chance to re-double.
+DOUBLING
+1 DOUBLE 2 0
+2 DOUBLE
+3 DOUBLE 0
+0 DOUBLE 3
+
+# This is the protocol for trick-taking games
+# (nullo, queens, barbu, hearts, last two, ravage, trumps)
+TRICK <- indicates that we're starting a trick
+0 ah
+1 5h
+PLAY  <- PLAY reminds you that it's your turn to play
+>> 6h
+kh  <- if this is barbu then the game is over
+
+# This is the protocol for dominoes
+0 9h
+1 th
+2 9s
+3 PASS
+
+# This is the protocol for ending a game
+END 0 0 0 -18
+
+
+
 Cards are specified as two character strings, the first character is rank and the second character is suit.
 Ranks are 23456789tjqka
 Suids are cdhs

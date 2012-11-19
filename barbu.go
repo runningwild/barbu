@@ -31,6 +31,21 @@ var all_perms = flag.Bool("permute", false, "Run all permutations for each deck 
 var rng *cmwc.Cmwc
 
 type BarbuGame interface {
+  // Runs the doubling for this game.  Most games will probably have the same
+  // doubling scheme, but this allows for special cases, like trumps.
+  // Returns a mapping from player to a slice of each player that player
+  // doubled.
+  // Note: This matrix should be symmetric, a[i][j] == a[j][i]
+  Double() [4][4]int
+
+  // Runs the game to completion.  Will only be called once.
+  Run()
+
+  // Returns the PRE-doubling scores for each player this game.
+  Scores() [4]int
+}
+
+type BarbuGame_old interface {
   Deal()
   Round() bool   // returns true iff game is over
   Score() [4]int // only call this after the game is over
@@ -82,13 +97,11 @@ func init() {
 var suits = []byte{'s', 'h', 'c', 'd'}
 var ranks = []byte{'2', '3', '4', '5', '6', '7', '8', '9', 't', 'j', 'q', 'k', 'a'}
 
-type card string
-
-func less(a, b card) bool {
+func less(a, b string) bool {
   return rank_map[a[0]] < rank_map[b[0]]
 }
 
-type Deck []card
+type Deck []string
 
 func (d Deck) Len() int {
   return len(d)
@@ -116,14 +129,14 @@ func (d Deck) String() string {
   }
   return s
 }
-func (d Deck) Deal() [4]Deck {
-  return [4]Deck{d[0:13], d[13:26], d[26:39], d[39:52]}
+func (d Deck) Deal() [][]string {
+  return [][]string{[]string(d[0:13]), []string(d[13:26]), []string(d[26:39]), []string(d[39:52])}
 }
 func makeDeck() Deck {
   var d Deck
   for _, suit := range suits {
     for _, rank := range ranks {
-      d = append(d, card([]byte{rank, suit}))
+      d = append(d, string([]byte{rank, suit}))
     }
   }
   for i := range d {
@@ -264,9 +277,9 @@ func main() {
     }
   }
 
-  makers := map[string]func([4]Player, Deck) BarbuGame{
-    "ravage":  MakeRavage,
-    "lasttwo": MakeLastTwo,
+  makers := map[string]func([]Player, [][]string) BarbuGame{
+    "ravage": MakeNewRavage,
+    // "lasttwo": MakeLastTwo,
   }
   game_maker, ok := makers[*game]
   if !ok {
@@ -304,16 +317,67 @@ func main() {
   for i := 0; i < N; i++ {
     deck := makeDeck()
     for _, perm := range perms {
-      var players [4]Player
+      players := make([]Player, 4)
       for i := range players {
         players[i] = orig_players[perm[i]]
       }
-      the_game := game_maker(players, deck.Copy())
-      the_game.Deal()
-      for !the_game.Round() {
+
+      // Tell the players what position they are around the table, and what
+      // their hand is.
+      hands := deck.Copy().Deal()
+      for i := range players {
+        players[i].Stdin().Write([]byte(fmt.Sprintf("PLAYER %d\n", i)))
+        for j := range hands[i] {
+          var line string
+          // Prevent having a trailing space
+          if j == 0 {
+            line = hands[i][j]
+          } else {
+            line = " " + hands[i][j]
+          }
+          players[i].Stdin().Write([]byte(line))
+        }
+        players[i].Stdin().Write([]byte("\n"))
       }
-      scores := the_game.Score()
+
+      // TODO: This is where the dealer should choose the game.
+      for i := range players {
+        players[i].Stdin().Write([]byte(strings.ToUpper(*game) + "\n"))
+      }
+
+      the_game := game_maker(players, hands)
+      doubles := the_game.Double()
+      the_game.Run()
+      raw_scores := the_game.Scores()
+      scores := make([]int, 4)
       for i := range scores {
+        for j := range scores {
+          if i >= j {
+            continue
+          }
+          if doubles[i][j] == 0 || raw_scores[i]-raw_scores[j] == 0 {
+            continue
+          }
+          diff := raw_scores[i] - raw_scores[j]
+          if diff < 0 {
+            diff = -diff
+          }
+          diff *= doubles[i][j]
+          if raw_scores[i] > raw_scores[j] {
+            scores[i] += diff
+            scores[j] -= diff
+          } else {
+            scores[j] += diff
+            scores[i] -= diff
+          }
+        }
+      }
+      for i := range scores {
+        scores[i] += raw_scores[i]
+      }
+      for i := range scores {
+        line := fmt.Sprintf("END %d %d %d %d\n", scores[0], scores[1], scores[2], scores[3])
+        players[i].Stdin().Write([]byte(line))
         total[perm[i]] += scores[i]
       }
     }
