@@ -278,8 +278,8 @@ func main() {
   }
 
   makers := map[string]func([]Player, [][]string) BarbuGame{
-    "ravage": MakeNewRavage,
-    // "lasttwo": MakeLastTwo,
+    "ravage":  MakeRavage,
+    "lasttwo": MakeLastTwo,
   }
   game_maker, ok := makers[*game]
   if !ok {
