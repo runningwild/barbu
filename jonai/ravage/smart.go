@@ -2,11 +2,16 @@ package ravage
 
 import (
   "bufio"
+  "flag"
   "fmt"
   "github.com/runningwild/barbu/util"
   "os"
   // "strings"
 )
+
+var P1 = flag.Int("p1", 0, "p1")
+var P2 = flag.Int("p2", 0, "p2")
+var P3 = flag.Int("p3", 0, "p3")
 
 var rank_map map[byte]int
 
@@ -60,16 +65,38 @@ func getLeader(cards []string) int {
 func goodEnoughToDouble(hand util.Hand) bool {
   for _, suit := range []byte{'c', 'd', 'h', 's'} {
     subhand := hand.BySuit(suit)
-    if subhand.Len() >= 2 && rank_map[subhand[len(subhand)-2][0]] >= rank_map['t'] {
+    // Don't double if we have King and Ace in a single suit.
+    if subhand.Len() >= 2 && rank_map[subhand[len(subhand)-2][0]] >= rank_map['k'] {
       return false
     }
   }
   return true
 }
 
-func lead(hand util.Hand, stats *util.Stats) string {
-  lowest_ratio := 10.0
+func lead(seat int, hand util.Hand, stats *util.Stats) string {
   var card string
+
+  // Purposefully lead a trick with a high card if it is our only very high
+  // card in that suit.
+  diff := 0
+  for _, suit := range []byte{'c', 'd', 'h', 's'} {
+    shand := hand.BySuit(suit)
+    if shand.Len() <= 1 {
+      continue
+    }
+    d := rank_map[shand[len(shand)-1][0]] - rank_map[shand[len(shand)-2][0]]
+    if stats.Taken(seat, util.AnyRank, suit) == 0 && shand.Len() > 1 &&
+      d > 8 && d > diff {
+      card = shand[len(shand)-1]
+      diff = d
+    }
+  }
+
+  if card != "" {
+    return card
+  }
+
+  lowest_ratio := 10000.0
   for _, suit := range []byte{'c', 'd', 'h', 's'} {
     shand := hand.BySuit(suit)
     if shand.Len() == 0 {
@@ -84,14 +111,28 @@ func lead(hand util.Hand, stats *util.Stats) string {
   return card
 }
 
-func follow(shand util.Hand, stats *util.Stats, trick []string) string {
+func follow(seat int, shand util.Hand, stats *util.Stats, trick []string) string {
   high := trick[0]
   for _, c := range trick {
     if c[1] == trick[0][1] && rank_map[c[0]] > rank_map[high[0]] {
       high = c
     }
   }
+  if len(shand) == 1 {
+    return shand[0]
+  }
+
+  // Trying taking tricks on purpose if you have a high card in that suit
+  // if len(trick) == 1 && stats.Taken(seat, util.AnyRank, high[1]) <= *P1 {
+  //   if rank_map[shand[len(shand)-1][0]]-rank_map[shand[len(shand)-2][0]] > *P2 {
+  //     return shand[len(shand)-1]
+  //   }
+  // }
+
   if rank_map[shand[0][0]] > rank_map[high[0]] {
+    if len(trick) == 3 {
+      return shand[len(shand)-1]
+    }
     return shand[len(shand)-1]
   }
   for i := len(shand) - 1; i >= 0; i-- {
@@ -99,7 +140,7 @@ func follow(shand util.Hand, stats *util.Stats, trick []string) string {
       return shand[i]
     }
   }
-  panic("Should be unreachable.")
+  return shand[len(shand)-1]
 }
 
 func discard(hand util.Hand, stats *util.Stats) string {
@@ -114,8 +155,13 @@ func discard(hand util.Hand, stats *util.Stats) string {
     if shand.Len() > 1 && rank_map[shand[len(shand)-1][0]]-rank_map[shand[len(shand)-2][0]] > 5 {
       return shand[len(shand)-1]
     }
+    if shand.Len() > 2 &&
+      rank_map[shand[len(shand)-1][0]]-rank_map[shand[len(shand)-2][0]] > 1 &&
+      rank_map[shand[len(shand)-2][0]]-rank_map[shand[len(shand)-3][0]] > 4 {
+      return shand[len(shand)-1]
+    }
   }
-  best_ratio := 10.0
+  best_ratio := 0.0
   var best_card string
   for _, suit := range []byte{'c', 'd', 'h', 's'} {
     shand := hand.BySuit(suit)
@@ -123,7 +169,7 @@ func discard(hand util.Hand, stats *util.Stats) string {
       continue
     }
     ratio := float64(shand.Len()) / float64(stats.RemainingInSuit(suit))
-    if ratio < best_ratio {
+    if ratio > best_ratio {
       best_ratio = ratio
       best_card = shand[len(shand)-1]
     }
@@ -200,11 +246,11 @@ func Smart(input *bufio.Reader, seating int, shand []string) {
         // play something
         var card string
         if len(trick) == 0 {
-          card = lead(hand, stats)
+          card = lead(seating, hand, stats)
         } else {
           shand := hand.BySuit(trick[0][1])
           if shand.Len() > 0 {
-            card = follow(shand, stats, trick)
+            card = follow(seating, shand, stats, trick)
           } else {
             // We only get here if we were unable to follow suit
             card = discard(hand, stats)
