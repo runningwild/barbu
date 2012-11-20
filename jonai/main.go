@@ -45,6 +45,9 @@ func main() {
     case "LASTTWO":
       lasttwo.Smart(stdin, seating, hand)
 
+    case "BARBU":
+      ravage.Smart(stdin, seating, hand)
+
     case "DONE":
       return
 

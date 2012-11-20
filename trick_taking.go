@@ -74,11 +74,15 @@ type StandardTrickTaking struct {
   Players []Player
   Hands   []util.Hand
   Tricks  []Trick
+
+  // Called after every trick if not nil.  If it returns true the game ends
+  // immediately.
+  End_early func([]Trick) bool
 }
 
 func (t *StandardTrickTaking) Run() {
   leader := 0
-  for len(t.Hands[0]) > 0 {
+  for len(t.Hands[0]) > 0 && (t.End_early == nil || len(t.Tricks) == 0 || !t.End_early(t.Tricks)) {
     // Let each player know that we're starting a new trick
     for _, player := range t.Players {
       player.Stdin().Write([]byte("TRICK\n"))

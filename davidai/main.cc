@@ -99,6 +99,8 @@ int main() {
       player = new RavagePlayer(seat, cs);
     } else if (game == "LASTTWO") {
       player = new LastTwoPlayer(seat, cs);
+    } else if (game == "BARBU") {
+      player = new RavagePlayer(seat, cs);
     } else {
       assert(false);
     }
