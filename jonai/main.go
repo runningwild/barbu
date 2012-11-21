@@ -4,11 +4,29 @@ import (
   "bufio"
   "flag"
   "fmt"
-  "github.com/runningwild/barbu/jonai/lasttwo"
-  "github.com/runningwild/barbu/jonai/ravage"
   "os"
   "strings"
 )
+
+var rank_map map[byte]int
+
+func init() {
+  rank_map = map[byte]int{
+    '2': 1,
+    '3': 2,
+    '4': 3,
+    '5': 4,
+    '6': 5,
+    '7': 6,
+    '8': 7,
+    '9': 8,
+    't': 9,
+    'j': 10,
+    'q': 11,
+    'k': 12,
+    'a': 13,
+  }
+}
 
 func main() {
   flag.Parse()
@@ -40,13 +58,13 @@ func main() {
     }
     switch string(line) {
     case "RAVAGE":
-      ravage.Smart(stdin, seating, hand)
+      StandardTrickTakingAi(stdin, seating, hand, NewRavageAi())
 
     case "LASTTWO":
-      lasttwo.Smart(stdin, seating, hand)
+      StandardTrickTakingAi(stdin, seating, hand, NewLastTwoAi())
 
     case "BARBU":
-      ravage.Smart(stdin, seating, hand)
+      StandardTrickTakingAi(stdin, seating, hand, NewBarbuAi())
 
     case "DONE":
       return
