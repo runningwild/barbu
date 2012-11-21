@@ -315,6 +315,8 @@ func main() {
       }
     }
   }
+  total_games := N * len(perms)
+  completed := 0
   for i := 0; i < N; i++ {
     deck := makeDeck()
     for _, perm := range perms {
@@ -381,9 +383,13 @@ func main() {
         players[i].Stdin().Write([]byte(line))
         total[perm[i]] += scores[i]
       }
+      completed++
+      fmt.Printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b")
+      fmt.Printf("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b")
+      fmt.Printf("Finished %d/%d games.", completed, total_games)
     }
   }
-  fmt.Printf("Averages:\n")
+  fmt.Printf("\nAverages:\n")
   for i := range total {
     fmt.Printf("Player %d: %.2f\n", i, float64(total[i])/float64(N*len(perms)))
   }
