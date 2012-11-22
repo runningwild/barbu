@@ -188,6 +188,19 @@ func (s *Stats) RemainingInSuit(suit byte) int {
   return s.remaining_suits[suit]
 }
 
+func (s *Stats) RemainingAboveInSuit(rank, suit byte) int {
+  count := 0
+  for this_rank := range rank_map {
+    if rank_map[this_rank] <= rank_map[rank] {
+      continue
+    }
+    if s.remaining_cards[string([]byte{this_rank, suit})] {
+      count++
+    }
+  }
+  return count
+}
+
 func (s *Stats) IsDefinitelyVoid(player int, suit byte) bool {
   return s.voids[player][suit]
 }

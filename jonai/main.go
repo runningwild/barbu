@@ -8,6 +8,10 @@ import (
   "strings"
 )
 
+var P1 = flag.Int("p1", 0, "p1")
+var P2 = flag.Int("p2", 0, "p2")
+var P3 = flag.Int("p3", 0, "p3")
+
 var rank_map map[byte]int
 
 func init() {
