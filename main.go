@@ -240,6 +240,15 @@ var perms = [][]int{
   {3, 2, 1, 0},
 }
 
+func equivalentPermutation(pi, pj int) bool {
+  for i := 0; i < 4; i++ {
+    if *player_names[perms[pi][i]] != *player_names[perms[pj][i]] {
+      return false
+    }
+  }
+  return true
+}
+
 func main() {
   flag.Parse()
   rng = cmwc.MakeGoodCmwc()
@@ -317,70 +326,89 @@ func main() {
   }
   total_games := N * len(perms)
   completed := 0
-  for i := 0; i < N; i++ {
-    deck := makeDeck()
-    for _, perm := range perms {
-      players := make([]Player, 4)
-      for i := range players {
-        players[i] = orig_players[perm[i]]
-      }
 
-      // Tell the players what position they are around the table, and what
-      // their hand is.
-      hands := deck.Copy().Deal()
-      for i := range players {
-        players[i].Stdin().Write([]byte(fmt.Sprintf("PLAYER %d\n", i)))
-        for j := range hands[i] {
-          var line string
-          // Prevent having a trailing space
-          if j == 0 {
-            line = hands[i][j]
-          } else {
-            line = " " + hands[i][j]
+  for i := 0; i < N; i++ {
+    // Map from N to the scores for the Nth permutation
+    perm_score_map := make(map[int][]int)
+    deck := makeDeck()
+    for perm_num, perm := range perms {
+      equivalent := false
+      equivalent_perm_num := -1
+      for pi := 0; pi < perm_num; pi++ {
+        if equivalentPermutation(pi, perm_num) {
+          equivalent = true
+          equivalent_perm_num = pi
+          break
+        }
+      }
+      scores := make([]int, 4)
+      players := make([]Player, 4)
+      if equivalent {
+        scores = perm_score_map[equivalent_perm_num]
+      } else {
+        for i := range players {
+          players[i] = orig_players[perm[i]]
+        }
+
+        // Tell the players what position they are around the table, and what
+        // their hand is.
+        hands := deck.Copy().Deal()
+        for i := range players {
+          players[i].Stdin().Write([]byte(fmt.Sprintf("PLAYER %d\n", i)))
+          for j := range hands[i] {
+            var line string
+            // Prevent having a trailing space
+            if j == 0 {
+              line = hands[i][j]
+            } else {
+              line = " " + hands[i][j]
+            }
+            players[i].Stdin().Write([]byte(line))
           }
+          players[i].Stdin().Write([]byte("\n"))
+        }
+
+        // TODO: This is where the dealer should choose the game.
+        for i := range players {
+          players[i].Stdin().Write([]byte(strings.ToUpper(*game) + "\n"))
+        }
+
+        the_game := game_maker(players, hands)
+        doubles := the_game.Double()
+        the_game.Run()
+        raw_scores := the_game.Scores()
+        for i := range scores {
+          for j := range scores {
+            if i >= j {
+              continue
+            }
+            if doubles[i][j] == 0 || raw_scores[i]-raw_scores[j] == 0 {
+              continue
+            }
+            diff := raw_scores[i] - raw_scores[j]
+            if diff < 0 {
+              diff = -diff
+            }
+            diff *= doubles[i][j]
+            if raw_scores[i] > raw_scores[j] {
+              scores[i] += diff
+              scores[j] -= diff
+            } else {
+              scores[j] += diff
+              scores[i] -= diff
+            }
+          }
+        }
+        for i := range scores {
+          scores[i] += raw_scores[i]
+        }
+      }
+      perm_score_map[perm_num] = scores
+      for i := range scores {
+        if !equivalent {
+          line := fmt.Sprintf("END %d %d %d %d\n", scores[0], scores[1], scores[2], scores[3])
           players[i].Stdin().Write([]byte(line))
         }
-        players[i].Stdin().Write([]byte("\n"))
-      }
-
-      // TODO: This is where the dealer should choose the game.
-      for i := range players {
-        players[i].Stdin().Write([]byte(strings.ToUpper(*game) + "\n"))
-      }
-
-      the_game := game_maker(players, hands)
-      doubles := the_game.Double()
-      the_game.Run()
-      raw_scores := the_game.Scores()
-      scores := make([]int, 4)
-      for i := range scores {
-        for j := range scores {
-          if i >= j {
-            continue
-          }
-          if doubles[i][j] == 0 || raw_scores[i]-raw_scores[j] == 0 {
-            continue
-          }
-          diff := raw_scores[i] - raw_scores[j]
-          if diff < 0 {
-            diff = -diff
-          }
-          diff *= doubles[i][j]
-          if raw_scores[i] > raw_scores[j] {
-            scores[i] += diff
-            scores[j] -= diff
-          } else {
-            scores[j] += diff
-            scores[i] -= diff
-          }
-        }
-      }
-      for i := range scores {
-        scores[i] += raw_scores[i]
-      }
-      for i := range scores {
-        line := fmt.Sprintf("END %d %d %d %d\n", scores[0], scores[1], scores[2], scores[3])
-        players[i].Stdin().Write([]byte(line))
         total[perm[i]] += scores[i]
       }
       completed++
