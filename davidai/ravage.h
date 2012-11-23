@@ -11,6 +11,8 @@ public:
     : AbstractTrickTakingPlayer(seat, hand),
       taken_by_suit_(4, 0) {}
 
+  virtual bool ShouldDouble(int player) { return true; }
+
   virtual void PrepareForTrick() {
     RecalculateBadness(&card_badness_, &suit_badness_);
   }

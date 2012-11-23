@@ -135,6 +135,7 @@ void AbstractPlayer::RunDoubling() {
   assert(doubling_header == "DOUBLING");
 
   for (int i = 0; i < 4; i++) {
+    int index = (i == 3 ? 0 : i + 1);
     string doubling, part;
     getline(cin, doubling);
     stringstream in(doubling);
@@ -147,9 +148,10 @@ void AbstractPlayer::RunDoubling() {
       assert(parts[0] == "DOUBLE");
       vector<int> to_double;
       for (int j = 0; j < 4; ++j) {
-        if (j != i)
-          if (ShouldDouble(j))
-            out << " " << j;
+        if (j == index) continue;
+        if (i == 3 && !doubles()[j][index]) continue;
+        if (ShouldDouble(j))
+          out << " " << j;
       }
       string s = out.str();
       if (s.empty())
@@ -164,7 +166,6 @@ void AbstractPlayer::RunDoubling() {
       assert(parts[1] == "DOUBLE");
       for (int j = 2; j < parts.size(); ++j)
         to_double[atoi(parts[j].c_str())] = true;
-      int index = (i == 3 ? 0 : i + 1);
       RecordDouble(index, to_double);
     }
   }  
