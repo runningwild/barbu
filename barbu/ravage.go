@@ -9,7 +9,7 @@ type Ravage struct {
   StandardTrickTaking
 }
 
-func MakeRavage(players []Player, hands [][]string) BarbuGame {
+func makeRavage(players []Player, hands [][]string) BarbuGame {
   var r Ravage
   r.StandardDoubling.Players = players[:]
   r.StandardTrickTaking.Players = players[:]
@@ -17,6 +17,9 @@ func MakeRavage(players []Player, hands [][]string) BarbuGame {
     r.StandardTrickTaking.Hands = append(r.StandardTrickTaking.Hands, util.Hand(hand))
   }
   return &r
+}
+func init() {
+  RegisterBarbuGame("ravage", makeRavage)
 }
 
 func (r *Ravage) Scores() [4]int {

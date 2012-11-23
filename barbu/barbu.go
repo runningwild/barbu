@@ -9,7 +9,7 @@ type Barbu struct {
   StandardTrickTaking
 }
 
-func MakeBarbu(players []Player, hands [][]string) BarbuGame {
+func makeBarbu(players []Player, hands [][]string) BarbuGame {
   var lt Barbu
   lt.StandardDoubling.Players = players[:]
   lt.StandardTrickTaking.Players = players[:]
@@ -25,6 +25,9 @@ func MakeBarbu(players []Player, hands [][]string) BarbuGame {
     return false
   }
   return &lt
+}
+func init() {
+  RegisterBarbuGame("barbu", makeBarbu)
 }
 
 func (lt *Barbu) Scores() [4]int {

@@ -26,6 +26,33 @@ type BarbuGame interface {
   Scores() [4]int
 }
 
+type BarbuGameMaker func(players []Player, hands [][]string) BarbuGame
+
+var allBarbuGames map[string]BarbuGameMaker
+var allBarbuGameNames []string
+
+// Registers a mapping from name to a factory function for barbu games.
+func RegisterBarbuGame(name string, maker BarbuGameMaker) {
+  if allBarbuGames == nil {
+    allBarbuGames = make(map[string]BarbuGameMaker)
+  }
+  if _, ok := allBarbuGames[name]; ok {
+    panic(fmt.Sprintf("Tried to register a BarbuGame '%s' twice.", name))
+  }
+  allBarbuGames[name] = maker
+  allBarbuGameNames = append(allBarbuGameNames, name)
+  sort.Strings(allBarbuGameNames)
+}
+func AllBarbuGameNames() []string {
+  return allBarbuGameNames
+}
+func GetBarbuGame(name string, players []Player, hands [][]string) BarbuGame {
+  if allBarbuGames == nil {
+    return nil
+  }
+  return allBarbuGames[name](players, hands)
+}
+
 type StandardTrickTakingGame struct{}
 
 func (StandardTrickTakingGame) GetValidPlays(hand []string, lead string) []string {
@@ -237,19 +264,14 @@ func RunGames(players []Player, seed int64, game string, num_games int, all_perm
     rng.SeedWithDevRand()
   }
 
-  makers := map[string]func([]Player, [][]string) BarbuGame{
-    "ravage":  MakeRavage,
-    "lasttwo": MakeLastTwo,
-    "barbu":   MakeBarbu,
-  }
-  game_maker, ok := makers[game]
-  if !ok {
-    var names []string
-    for name := range makers {
-      names = append(names, name)
+  valid_game := false
+  for _, valid_name := range AllBarbuGameNames() {
+    if game == valid_name {
+      valid_game = true
     }
-    sort.Strings(names)
-    fmt.Printf("'%s' is not a valid game.  Valid games are %v.\n", names)
+  }
+  if !valid_game {
+    fmt.Printf("'%s' is not a valid game.  Valid games are %v.\n", AllBarbuGameNames())
   }
 
   var total [4]int
@@ -305,8 +327,7 @@ func RunGames(players []Player, seed int64, game string, num_games int, all_perm
         for i := range permed_players {
           permed_players[i].Stdin().Write([]byte(strings.ToUpper(game) + "\n"))
         }
-
-        the_game := game_maker(permed_players, hands)
+        the_game := GetBarbuGame(game, permed_players, hands)
         doubles := the_game.Double()
         the_game.Run()
         raw_scores := the_game.Scores()
