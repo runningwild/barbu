@@ -1,7 +1,7 @@
 package main
 
 import (
-  "github.com/runningwild/barbu/util"
+// "github.com/runningwild/barbu/util"
 )
 
 type barbuAi struct {
@@ -16,35 +16,24 @@ func (r *barbuAi) Double(doubles [4][4]bool) []bool {
   return []bool{false, false, false}
 }
 
-func (r *barbuAi) Lead() string {
+func (r *barbuAi) holding() bool {
+  for _, c := range r.hand {
+    if c == "kh" {
+      return true
+    }
+  }
+  return false
+}
+
+func (r *barbuAi) pickLowestRatioInSuits(suits []byte) string {
   var card string
-  // Purposefully lead a trick with a high card if it is our only very high
-  // card in that suit.
-  diff := 0
-  for _, suit := range []byte{'c', 'd', 'h', 's'} {
-    shand := r.hand.BySuit(suit)
-    if shand.Len() <= 1 {
-      continue
-    }
-    d := rank_map[shand[len(shand)-1][0]] - rank_map[shand[len(shand)-2][0]]
-    if r.stats.Taken(r.seat, util.AnyRank, suit) == 0 && shand.Len() > 1 &&
-      d > 8 && d > diff {
-      card = shand[len(shand)-1]
-      diff = d
-    }
-  }
-
-  if card != "" {
-    return card
-  }
-
   lowest_ratio := 10000.0
-  for _, suit := range []byte{'c', 'd', 'h', 's'} {
+  for _, suit := range suits {
     shand := r.hand.BySuit(suit)
     if shand.Len() == 0 {
       continue
     }
-    ratio := float64(shand.Len()) / float64(r.stats.RemainingInSuit(suit))
+    ratio := float64(shand.Len()+1) / float64(r.stats.RemainingInSuit(suit)+1)
     if ratio < lowest_ratio {
       lowest_ratio = ratio
       card = shand[0]
@@ -53,7 +42,23 @@ func (r *barbuAi) Lead() string {
   return card
 }
 
+func (r *barbuAi) Lead() string {
+  var card string
+  if r.holding() {
+    card = r.pickLowestRatioInSuits([]byte{'c', 'd', 's'})
+  }
+  if card != "" {
+    return card
+  }
+  card = r.pickLowestRatioInSuits([]byte{'c', 'd', 'h', 's'})
+  return card
+}
+
 func (r *barbuAi) Follow(lead string) string {
+  if lead == "ah" && r.holding() {
+    return "kh"
+  }
+
   shand := r.hand.BySuit(lead[1])
   for _, c := range r.trick {
     if c[1] == r.trick[0][1] && rank_map[c[0]] > rank_map[lead[0]] {
@@ -86,6 +91,9 @@ func (r *barbuAi) Follow(lead string) string {
 }
 
 func (r *barbuAi) Discard() string {
+  if r.holding() {
+    return "kh"
+  }
   for _, suit := range []byte{'c', 'd', 'h', 's'} {
     shand := r.hand.BySuit(suit)
     if shand.Len() == 0 {
