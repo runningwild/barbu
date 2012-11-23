@@ -1,4 +1,4 @@
-package main
+package barbu
 
 import (
   "github.com/runningwild/barbu/util"
@@ -9,7 +9,7 @@ type LastTwo struct {
   StandardTrickTaking
 }
 
-func MakeLastTwo(players []Player, hands [][]string) BarbuGame {
+func makeLastTwo(players []Player, hands [][]string) BarbuGame {
   var lt LastTwo
   lt.StandardDoubling.Players = players[:]
   lt.StandardTrickTaking.Players = players[:]
@@ -17,6 +17,9 @@ func MakeLastTwo(players []Player, hands [][]string) BarbuGame {
     lt.StandardTrickTaking.Hands = append(lt.StandardTrickTaking.Hands, util.Hand(hand))
   }
   return &lt
+}
+func init() {
+  RegisterBarbuGame("lasttwo", makeLastTwo)
 }
 
 func (lt *LastTwo) Scores() [4]int {

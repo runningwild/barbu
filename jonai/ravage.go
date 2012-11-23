@@ -1,13 +1,8 @@
 package main
 
 import (
-  "flag"
   "github.com/runningwild/barbu/util"
 )
-
-var P1 = flag.Int("p1", 0, "p1")
-var P2 = flag.Int("p2", 0, "p2")
-var P3 = flag.Int("p3", 0, "p3")
 
 type ravageAi struct {
   trickTakingBasics
@@ -21,24 +16,40 @@ func (r *ravageAi) Double(doubles [4][4]bool) []bool {
   return []bool{false, false, false}
 }
 
+func (r *ravageAi) winner(trick []string) int {
+  suit := trick[0][1]
+  var index int
+  high := -1
+  for i, card := range trick {
+    if card[1] != suit {
+      continue
+    }
+    if rank_map[card[0]] > high {
+      high = rank_map[card[0]]
+      index = i
+    }
+  }
+  return (r.seat - len(trick) + index + 4) % 4
+}
+
 func (r *ravageAi) Lead() string {
   var card string
   // Purposefully lead a trick with a high card if it is our only very high
   // card in that suit.
-  diff := 0
+  diff := 8
   for _, suit := range []byte{'c', 'd', 'h', 's'} {
     shand := r.hand.BySuit(suit)
-    if shand.Len() <= 1 {
+    if shand.Len() <= 1 || r.stats.Taken(r.seat, util.AnyRank, suit) > 0 {
       continue
     }
-    d := rank_map[shand[len(shand)-1][0]] - rank_map[shand[len(shand)-2][0]]
-    if r.stats.Taken(r.seat, util.AnyRank, suit) == 0 && shand.Len() > 1 &&
-      d > 8 && d > diff {
+    A := rank_map[shand[len(shand)-1][0]]
+    B := rank_map[shand[len(shand)-2][0]]
+    cdiff := A - B
+    if cdiff > diff {
       card = shand[len(shand)-1]
-      diff = d
+      diff = cdiff
     }
   }
-
   if card != "" {
     return card
   }
@@ -50,6 +61,8 @@ func (r *ravageAi) Lead() string {
       continue
     }
     ratio := float64(shand.Len()) / float64(r.stats.RemainingInSuit(suit))
+    val := shand[len(shand)-1][0]
+    ratio *= float64(val * val)
     if ratio < lowest_ratio {
       lowest_ratio = ratio
       card = shand[0]
@@ -69,13 +82,6 @@ func (r *ravageAi) Follow(lead string) string {
     return shand[0]
   }
 
-  // Trying taking tricks on purpose if you have a lead card in that suit
-  // if len(trick) == 1 && stats.Taken(seat, util.AnyRank, lead[1]) <= *P1 {
-  //   if rank_map[shand[len(shand)-1][0]]-rank_map[shand[len(shand)-2][0]] > *P2 {
-  //     return shand[len(shand)-1]
-  //   }
-  // }
-
   if rank_map[shand[0][0]] > rank_map[lead[0]] {
     if len(r.trick) == 3 {
       return shand[len(shand)-1]
@@ -91,6 +97,52 @@ func (r *ravageAi) Follow(lead string) string {
 }
 
 func (r *ravageAi) Discard() string {
+  {
+    var card string
+    winner := r.winner(r.trick)
+    biggest := 6
+
+    for _, suit := range []byte{'c', 'd', 'h', 's'} {
+      shand := r.hand.BySuit(suit)
+      if shand.Len() == 0 {
+        continue
+      }
+
+      if r.stats.Taken(winner, util.AnyRank, suit) > biggest {
+        biggest = r.stats.Taken(winner, util.AnyRank, suit)
+        card = shand[len(shand)-1]
+      }
+    }
+    if card != "" {
+      return card
+    }
+  }
+
+  // If there is a big difference between the two highest cards in one suit,
+  // then ditch the highest.  A card is more likely to be discarded in this
+  // fashion the higher it is and the bigger the gap between it and the next
+  // highest card.
+  {
+    diff := 16
+    var card string
+    for _, suit := range []byte{'c', 'd', 'h', 's'} {
+      shand := r.hand.BySuit(suit)
+      if shand.Len() <= 1 {
+        continue
+      }
+      A := rank_map[shand[len(shand)-1][0]]
+      B := rank_map[shand[len(shand)-2][0]]
+      cdiff := A*A - B*B
+      if cdiff > diff {
+        card = shand[len(shand)-1]
+        diff = cdiff
+      }
+    }
+    if card != "" {
+      return card
+    }
+  }
+
   for _, suit := range []byte{'c', 'd', 'h', 's'} {
     shand := r.hand.BySuit(suit)
     if shand.Len() == 0 {
@@ -98,9 +150,6 @@ func (r *ravageAi) Discard() string {
     }
     if shand.Len() == 1 && r.stats.RemainingInSuit(suit) > 1 {
       return shand[0]
-    }
-    if shand.Len() > 1 && rank_map[shand[len(shand)-1][0]]-rank_map[shand[len(shand)-2][0]] > 5 {
-      return shand[len(shand)-1]
     }
     if shand.Len() > 2 &&
       rank_map[shand[len(shand)-1][0]]-rank_map[shand[len(shand)-2][0]] > 1 &&
