@@ -8,6 +8,13 @@
 #include <vector>
 using namespace std;
 
+Card::Card(int suit, int value)
+    : suit_(suit),
+      value_(value) {
+  assert(suit >= 0 && suit < 4);
+  assert(value >= 0 && value < 13);
+}
+
 Card::Card(const string& s) {
   if (s[0] >= '2' && s[0] <= '9') value_ = s[0] - '2';
   else if (s[0] == 't') value_ = 8;
@@ -35,6 +42,7 @@ vector<Card> Card::ListFromString(const string& s) {
 
 string Card::ToString() const {
   string result = "??";
+  if (!IsValid()) return result;
   if (value_ >= 0 && value_ <= 7) result[0] = '2' + value_;
   else if (value_ == 8) result[0] = 't';
   else if (value_ == 9) result[0] = 'j';
@@ -138,10 +146,11 @@ void AbstractPlayer::RunDoubling() {
       ostringstream out;
       assert(parts[0] == "DOUBLE");
       vector<int> to_double;
-      for (int j = 0; j < 4; ++j)
+      for (int j = 0; j < 4; ++j) {
         if (j != i)
           if (ShouldDouble(j))
             out << " " << j;
+      }
       string s = out.str();
       if (s.empty())
         cout << "" << endl;
@@ -213,17 +222,6 @@ void AbstractTrickTakingPlayer::PlayHand() {
     RecordTrick(full_trick, position);
   }
   assert (line.substr(0, 3) == "END");
-}
-
-int AbstractTrickTakingPlayer::GetWinnerIndex(
-    const vector<Card>& played_cards) const {
-  assert(!played_cards.empty());
-  int index = 0;
-  for (int i = 1; i < played_cards.size(); ++i)
-    if (played_cards[i].suit() == played_cards[index].suit() &&
-	played_cards[i].value() > played_cards[index].value())
-      index = i;
-  return index;
 }
 
 Card AbstractTrickTakingPlayer::RecordTrick(const vector<Card>& played_cards,

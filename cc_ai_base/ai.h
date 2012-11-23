@@ -7,12 +7,12 @@ using namespace std;
 
 class Card {
  public:
-  Card() : suit_(0), value_(0) {}
-  Card(int suit, int value) : suit_(suit), value_(value) {}
-
+  Card() : suit_(-1), value_(-1) {}
+  Card(int suit, int value);
   Card(const string& s);
   static vector<Card> ListFromString(const string& s);
 
+  bool IsValid() const { return suit_ >= 0; }
   int suit() const { return suit_; }
   int value() const { return value_; }
 
@@ -73,7 +73,6 @@ class AbstractTrickTakingPlayer : public AbstractPlayer {
  protected:
   const CardSet& hand() const { return hand_; }
   const CardSet& remaining_cards() const { return remaining_cards_; }
-  int GetWinnerIndex(const vector<Card>& played_cards) const;
 
   // OVERRIDE THESE FUNCTIONS
   virtual void PrepareForTrick() {}

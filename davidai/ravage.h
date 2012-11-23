@@ -2,6 +2,7 @@
 #define RAVAGE_H_
 
 #include "../cc_ai_base/ai.h"
+#include "../cc_ai_base/utils.h"
 #include <assert.h>
 
 class RavagePlayer : public AbstractTrickTakingPlayer {
