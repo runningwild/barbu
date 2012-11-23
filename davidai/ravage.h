@@ -1,7 +1,8 @@
 #ifndef RAVAGE_H_
 #define RAVAGE_H_
 
-#include "base.h"
+#include "../cc_ai_base/ai.h"
+#include <assert.h>
 
 class RavagePlayer : public AbstractTrickTakingPlayer {
 public:
@@ -13,7 +14,7 @@ public:
     RecalculateBadness(&card_badness_, &suit_badness_);
   }
 
-  virtual Card LeadTrick() const {
+  virtual Card LeadTrick() {
     Card best_card;
     double best_goodness = -9999;
     for (int suit = 0; suit < 4; ++suit) {
@@ -36,7 +37,7 @@ public:
     return best_card;
   }
 
-  virtual Card FollowTrick(const vector<Card>& played_cards) const {
+  virtual Card FollowTrick(const vector<Card>& played_cards) {
     int suit = played_cards[0].suit();
     int winner_value = played_cards[GetWinnerIndex(played_cards)].value();
     const vector<int>& my_values = hand().GetValues(suit);
@@ -61,7 +62,7 @@ public:
     return Card(suit, my_values[lowest_win_index]);
   }
 
-  virtual Card DiscardTrick(const vector<Card>& played_cards) const {
+  virtual Card DiscardTrick(const vector<Card>& played_cards) {
     Card best_card;
     double best_goodness = -9999;
     for (int suit = 0; suit < 4; ++suit) {
