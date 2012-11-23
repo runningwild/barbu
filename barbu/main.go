@@ -1,34 +1,15 @@
-package main
+package barbu
 
 import (
   "bufio"
-  "flag"
   "fmt"
   "github.com/runningwild/cmwc"
   "io"
   "os"
   "os/exec"
-  "runtime/pprof"
   "sort"
   "strings"
 )
-
-// profiling info
-var cpu_profile = flag.String("cpuprof", "", "file to write cpu profile to")
-
-var player_names = []*string{
-  flag.String("player0", "", "command to run for player 0"),
-  flag.String("player1", "", "command to run for player 1"),
-  flag.String("player2", "", "command to run for player 2"),
-  flag.String("player3", "", "command to run for player 3"),
-}
-
-var seed = flag.Int64("seed", 0, "Random seed - 0 uses current time.")
-var game = flag.String("game", "", "The barbu game to run")
-var num_games = flag.Int("n", 1, "Number of games")
-var all_perms = flag.Bool("permute", false, "Run all permutations for each deck (24 runs per deck).")
-
-var rng *cmwc.Cmwc
 
 type BarbuGame interface {
   // Runs the doubling for this game.  Most games will probably have the same
@@ -43,16 +24,6 @@ type BarbuGame interface {
 
   // Returns the PRE-doubling scores for each player this game.
   Scores() [4]int
-}
-
-type BarbuGame_old interface {
-  Deal()
-  Round() bool   // returns true iff game is over
-  Score() [4]int // only call this after the game is over
-
-  // Given the string that a player would normally be given before choosing
-  // what to play, returns an array containing all valid plays
-  GetValidPlays(hand []string, lead string) []string
 }
 
 type StandardTrickTakingGame struct{}
@@ -132,7 +103,7 @@ func (d Deck) String() string {
 func (d Deck) Deal() [][]string {
   return [][]string{[]string(d[0:13]), []string(d[13:26]), []string(d[26:39]), []string(d[39:52])}
 }
-func makeDeck() Deck {
+func makeDeck(rng *cmwc.Cmwc) Deck {
   var d Deck
   for _, suit := range suits {
     for _, rank := range ranks {
@@ -147,6 +118,10 @@ func makeDeck() Deck {
 }
 
 type Player interface {
+  // If two players return the same Id() they should be equivalent.  i.e. they
+  // will always make the same moves as each other given the same exact
+  // situation.
+  Id() string
   Stdin() io.Writer
   Stdout() *bufio.Reader
   Stderr() *bufio.Reader
@@ -154,12 +129,16 @@ type Player interface {
 }
 
 type aiPlayer struct {
+  id     string
   cmd    *exec.Cmd
   stdin  io.Writer
   stdout *bufio.Reader
   stderr *bufio.Reader
 }
 
+func (a *aiPlayer) Id() string {
+  return a.id
+}
 func (a *aiPlayer) Stdin() io.Writer {
   return a.stdin
 }
@@ -174,6 +153,7 @@ func (a *aiPlayer) Close() {
 }
 func MakeAiPlayer(log_filename, name string) (Player, error) {
   var p aiPlayer
+  p.id = name
   params := strings.Fields(name)
   p.cmd = exec.Command(params[0], params[1:]...)
   log, err := os.Create(log_filename)
@@ -240,50 +220,21 @@ var perms = [][]int{
   {3, 2, 1, 0},
 }
 
-func equivalentPermutation(pi, pj int) bool {
+func equivalentPermutation(players []Player, pi, pj int) bool {
   for i := 0; i < 4; i++ {
-    if *player_names[perms[pi][i]] != *player_names[perms[pj][i]] {
+    if players[perms[pi][i]].Id() != players[perms[pj][i]].Id() {
       return false
     }
   }
   return true
 }
 
-func main() {
-  flag.Parse()
-  rng = cmwc.MakeGoodCmwc()
-  if *seed != 0 {
-    rng.Seed(int64(*seed))
+func RunGames(players []Player, seed int64, game string, num_games int, all_perms bool) {
+  rng := cmwc.MakeGoodCmwc()
+  if seed != 0 {
+    rng.Seed(int64(seed))
   } else {
     rng.SeedWithDevRand()
-  }
-
-  for i := range player_names {
-    if player_names[i] == nil || *player_names[i] == "" {
-      fmt.Fprintf(os.Stderr, "Must specify all 4 players with --player0 - --player3\n")
-      return
-    }
-  }
-
-  if *game == "" {
-    fmt.Fprintf(os.Stderr, "Must specify a game with --game.\n")
-    return
-  }
-
-  if *cpu_profile != "" {
-    profile_output, err := os.Create(*cpu_profile)
-    if err != nil {
-      fmt.Printf("Unable to start CPU profile: %v\n", err)
-    } else {
-      err = pprof.StartCPUProfile(profile_output)
-      if err != nil {
-        fmt.Printf("Unable to start CPU profile: %v\n", err)
-        profile_output.Close()
-      } else {
-        defer profile_output.Close()
-        defer pprof.StopCPUProfile()
-      }
-    }
   }
 
   makers := map[string]func([]Player, [][]string) BarbuGame{
@@ -291,7 +242,7 @@ func main() {
     "lasttwo": MakeLastTwo,
     "barbu":   MakeBarbu,
   }
-  game_maker, ok := makers[*game]
+  game_maker, ok := makers[game]
   if !ok {
     var names []string
     for name := range makers {
@@ -302,27 +253,9 @@ func main() {
   }
 
   var total [4]int
-  N := *num_games
-  if !*all_perms {
+  N := num_games
+  if !all_perms {
     perms = [][]int{{0, 1, 2, 3}}
-  }
-  var orig_players [4]Player
-  for i := range player_names {
-    var err error
-    if *player_names[i] == "terminal" {
-      orig_players[i] = makeTermPlayer()
-    } else if *player_names[i] == "net" {
-      orig_players[i], err = makeNetPlayer(i)
-      if err != nil {
-        panic(err)
-      }
-    } else {
-      orig_players[i], err = MakeAiPlayer(fmt.Sprintf("%d.out", i), *player_names[i])
-      if err != nil {
-        fmt.Printf("Error: %v\n", err)
-        return
-      }
-    }
   }
   total_games := N * len(perms)
   completed := 0
@@ -330,31 +263,31 @@ func main() {
   for i := 0; i < N; i++ {
     // Map from N to the scores for the Nth permutation
     perm_score_map := make(map[int][]int)
-    deck := makeDeck()
+    deck := makeDeck(rng)
     for perm_num, perm := range perms {
       equivalent := false
       equivalent_perm_num := -1
       for pi := 0; pi < perm_num; pi++ {
-        if equivalentPermutation(pi, perm_num) {
+        if equivalentPermutation(players, pi, perm_num) {
           equivalent = true
           equivalent_perm_num = pi
           break
         }
       }
       scores := make([]int, 4)
-      players := make([]Player, 4)
+      permed_players := make([]Player, 4)
       if equivalent {
         scores = perm_score_map[equivalent_perm_num]
       } else {
-        for i := range players {
-          players[i] = orig_players[perm[i]]
+        for i := range permed_players {
+          permed_players[i] = players[perm[i]]
         }
 
-        // Tell the players what position they are around the table, and what
+        // Tell the permed_players what position they are around the table, and what
         // their hand is.
         hands := deck.Copy().Deal()
-        for i := range players {
-          players[i].Stdin().Write([]byte(fmt.Sprintf("PLAYER %d\n", i)))
+        for i := range permed_players {
+          permed_players[i].Stdin().Write([]byte(fmt.Sprintf("PLAYER %d\n", i)))
           for j := range hands[i] {
             var line string
             // Prevent having a trailing space
@@ -363,17 +296,17 @@ func main() {
             } else {
               line = " " + hands[i][j]
             }
-            players[i].Stdin().Write([]byte(line))
+            permed_players[i].Stdin().Write([]byte(line))
           }
-          players[i].Stdin().Write([]byte("\n"))
+          permed_players[i].Stdin().Write([]byte("\n"))
         }
 
         // TODO: This is where the dealer should choose the game.
-        for i := range players {
-          players[i].Stdin().Write([]byte(strings.ToUpper(*game) + "\n"))
+        for i := range permed_players {
+          permed_players[i].Stdin().Write([]byte(strings.ToUpper(game) + "\n"))
         }
 
-        the_game := game_maker(players, hands)
+        the_game := game_maker(permed_players, hands)
         doubles := the_game.Double()
         the_game.Run()
         raw_scores := the_game.Scores()
@@ -407,7 +340,7 @@ func main() {
       for i := range scores {
         if !equivalent {
           line := fmt.Sprintf("END %d %d %d %d\n", scores[0], scores[1], scores[2], scores[3])
-          players[i].Stdin().Write([]byte(line))
+          permed_players[i].Stdin().Write([]byte(line))
         }
         total[perm[i]] += scores[i]
       }
