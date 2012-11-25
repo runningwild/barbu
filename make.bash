@@ -1,10 +1,10 @@
 mkdir -p bin
 
-# build the barbu runner
+# build the barbu binaries
 go build -o bin/runner ./runner/
-
 go build -o bin/server ./net/server
-go build -o bin/client ./net/client
+go build -o bin/player ./net/player
+go build -o bin/host ./net/host
 
 
 # build our ais

@@ -1,6 +1,6 @@
 package base
 
-type remoteData struct {
+type RemoteData struct {
   Client int
   Line   string
 }

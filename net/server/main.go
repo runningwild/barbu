@@ -2,9 +2,12 @@ package main
 
 import (
   "bufio"
+  "encoding/gob"
   "flag"
   "fmt"
+  base "github.com/runningwild/barbu/net"
   "net"
+  "strings"
   "sync"
   "time"
 )
@@ -22,21 +25,33 @@ type Game struct {
     take  chan connSeat
     got   chan bool
     taken [4]net.Conn
+    count int
   }
+  host  net.Conn
+  ready chan bool
 }
 
-func startGame() *Game {
+func startGame(conn net.Conn) *Game {
   var g Game
   g.seat.take = make(chan connSeat)
   g.seat.got = make(chan bool)
-  go g.routine()
+  g.ready = make(chan bool)
+  g.host = conn
+  go g.startupRoutine()
   return &g
 }
 func (g *Game) TakeSeat(seat int, conn net.Conn) bool {
   g.seat.take <- connSeat{seat, conn}
   return <-g.seat.got
 }
-func (g *Game) routine() {
+
+// Blocks until everyone has connected
+func (g *Game) Ready() bool {
+  return <-g.ready
+}
+
+func (g *Game) startupRoutine() {
+  var ready chan bool
   for {
     select {
     case req := <-g.seat.take:
@@ -45,7 +60,62 @@ func (g *Game) routine() {
       } else {
         g.seat.taken[req.seat] = req.conn
         g.seat.got <- true
+        g.seat.count++
+        if g.seat.count == 4 {
+          ready = g.ready
+        }
       }
+
+    case ready <- true:
+      go g.activeRoutine()
+      return
+    }
+  }
+}
+func (g *Game) activeRoutine() {
+  from_host := make(chan base.RemoteData, 10)
+  dec := gob.NewDecoder(g.host)
+  go func() {
+    var rd base.RemoteData
+    for {
+      err := dec.Decode(&rd)
+      if err != nil {
+        return
+      }
+      from_host <- rd
+    }
+  }()
+  from_client := make(chan base.RemoteData, 10)
+  for i := 0; i < 4; i++ {
+    go func(client int, conn net.Conn) {
+      reader := bufio.NewReader(conn)
+      for {
+        // We don't trim this line of the trailing '\n' because it is expected
+        // by the players.
+        line, err := reader.ReadString('\n')
+        if err != nil {
+          // TODO: Should probably kill everything at this point
+          return
+        }
+        from_client <- base.RemoteData{client, line}
+      }
+    }(i, g.seat.taken[i])
+  }
+
+  enc := gob.NewEncoder(g.host)
+  for {
+    var err error
+    select {
+    case client_data := <-from_client:
+      err = enc.Encode(client_data)
+    case host_data := <-from_host:
+      _, err = g.seat.taken[host_data.Client].Write([]byte(host_data.Line))
+    case <-g.seat.take:
+      g.seat.got <- false
+    }
+    if err != nil {
+      // TODO: Should kill everything here
+      return
     }
   }
 }
@@ -57,13 +127,13 @@ func init() {
   active_games = make(map[string]*Game)
 }
 
-func registerGame(name string) bool {
+func registerGame(name string, conn net.Conn) bool {
   active_games_mutex.Lock()
   defer active_games_mutex.Unlock()
   if _, ok := active_games[name]; ok {
     return false
   }
-  active_games[name] = startGame()
+  active_games[name] = startGame(conn)
   return true
 }
 
@@ -76,32 +146,48 @@ func getGame(name string) *Game {
 func unregisterGame(name string) {
   active_games_mutex.Lock()
   defer active_games_mutex.Unlock()
-  delete(active_games, name)
+  if game, ok := active_games[name]; ok {
+    delete(active_games, name)
+    for _, conn := range game.seat.taken {
+      conn.Close()
+    }
+  }
 }
 
 func handleHost(conn *net.TCPConn) {
   defer conn.Close()
+  defer fmt.Printf("Closed host conn.\n")
+
   r := bufio.NewReader(conn)
   w := bufio.NewWriter(conn)
-  line, _, err := r.ReadLine()
+  line, err := r.ReadString('\n')
   if err != nil {
     // TODO: Log this error
     fmt.Printf("Failed to read game from host: %v\n", err)
     return
   }
-  name := string(line)
-  fmt.Printf("Game name: %s\n", line)
-  if !registerGame(name) {
+  name := strings.TrimSpace(line)
+  fmt.Printf("Game name: %s\n", name)
+  if !registerGame(name, conn) {
     w.Write([]byte(fmt.Sprintf("Unable to make game '%s', that name is already in use.\n", name)))
     return
   }
   defer unregisterGame(name)
   w.Flush()
 
-  getGame(name)
+  game := getGame(name)
+  game.Ready()
+  dec := gob.NewDecoder(conn)
   for {
-    _, _, err = r.ReadLine()
+    var rd base.RemoteData
+    err := dec.Decode(&rd)
     if err != nil {
+      fmt.Printf("Error, dying.\n")
+      return
+    }
+    _, err = game.seat.taken[rd.Client].Write([]byte(rd.Line))
+    if err != nil {
+      fmt.Printf("Error writing to client %d: %v\n", rd.Client, err)
       return
     }
   }
@@ -135,8 +221,13 @@ func listenForHosts() error {
 }
 
 func handleClient(conn *net.TCPConn) {
-  defer conn.Close()
-  defer fmt.Printf("Closed client conn.\n")
+  success := false
+  defer func() {
+    if !success {
+      conn.Close()
+      fmt.Printf("Closed client conn.\n")
+    }
+  }()
 
   err := conn.SetDeadline(time.Now().Add(1 * time.Second))
   if err != nil {
@@ -144,13 +235,19 @@ func handleClient(conn *net.TCPConn) {
     return
   }
   w := bufio.NewReader(conn)
-  line, _, err := w.ReadLine()
+  line, err := w.ReadString('\n')
   if err != nil {
     fmt.Printf("Error reading from player: %v\n", err)
     return
   }
-  name := string(line)
+  name := strings.TrimSpace(line)
   game := getGame(name)
+  active_games_mutex.Lock()
+  fmt.Printf("%d active games:\n", len(active_games))
+  for name := range active_games {
+    fmt.Printf("%s\n", name)
+  }
+  active_games_mutex.Unlock()
   if game == nil {
     err_msg := fmt.Sprintf("Game '%s' does not exist.\n", name)
     conn.Write([]byte(err_msg))
@@ -158,25 +255,32 @@ func handleClient(conn *net.TCPConn) {
     return
   }
 
-  line, _, err = w.ReadLine()
+  line, err = w.ReadString('\n')
   if err != nil {
     fmt.Printf("Error reading from player: %v\n", err)
     return
   }
-  if len(line) != 1 || line[0] < 0 || line[0] > 3 {
-    err_msg := fmt.Sprintf("Specified an invalid seat.\n")
+  var seat int = -1
+  _, err = fmt.Sscanf(line, "%d", &seat)
+  if err != nil || seat < 0 || seat > 3 {
+    var err_msg string
+    if err != nil {
+      err_msg = fmt.Sprintf("Unable to parse seat: '%s': %v\n", strings.TrimSpace(line), err)
+    } else {
+      err_msg = fmt.Sprintf("Invalid seat: %d\n", seat)
+    }
     conn.Write([]byte(err_msg))
     fmt.Printf(err_msg)
     return
   }
-  seat := int(line[0])
   if !game.TakeSeat(seat, conn) {
     err_msg := fmt.Sprintf("Seat %d is already taken.\n", seat)
     conn.Write([]byte(err_msg))
     fmt.Printf(err_msg)
     return
   }
-  conn.Write([]byte("WOOO!!!\n"))
+  conn.SetDeadline(time.Time{})
+  success = true
 }
 
 func listenForClients() error {
