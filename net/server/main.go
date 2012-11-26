@@ -64,32 +64,48 @@ func (g *Game) startupRoutine() {
         g.seat.count++
         if g.seat.count == 4 {
           ready = g.ready
+          fmt.Printf("Set ready\n")
         }
       }
 
     case ready <- true:
+      fmt.Printf("Sent ready signal.\n")
       return
     }
   }
 }
 func (g *Game) activeRoutine() {
-  dead := make(chan bool, 10)
-  from_host := make(chan base.RemoteData, 10)
+  close_conns := func() {
+    g.host.Close()
+    for i := 0; i < 4; i++ {
+      g.seat.taken[i].Close()
+    }
+  }
+
+  // Take incoming data from the host and send it to the appropriate client.
   dec := gob.NewDecoder(g.host)
   go func() {
+    defer close_conns()
     for {
       var rd base.RemoteData
       err := dec.Decode(&rd)
       if err != nil {
-        dead <- true
         return
       }
-      from_host <- rd
+      _, err = g.seat.taken[rd.Client].Write([]byte(rd.Line))
+      if err != nil {
+        return
+      }
     }
   }()
+
   from_client := make(chan base.RemoteData, 10)
+  kill := make(chan struct{}, 4)
   for i := 0; i < 4; i++ {
     go func(client int, conn net.Conn) {
+      defer func() {
+        fmt.Printf("Left the split phase %d.\n", client)
+      }()
       reader := bufio.NewReader(conn)
       for {
         // We don't trim this line of the trailing '\n' because it is expected
@@ -97,31 +113,29 @@ func (g *Game) activeRoutine() {
         line, err := reader.ReadString('\n')
         if err != nil {
           // TODO: Should probably kill everything at this point
-          dead <- true
-          return
+          fmt.Printf("Client killed %d\n", client)
+          defer close_conns()
+          break
         }
         from_client <- base.RemoteData{client, line}
       }
+      kill <- struct{}{}
     }(i, g.seat.taken[i])
   }
+  go func() {
+    for i := 0; i < 4; i++ {
+      <-kill
+    }
+    close(from_client)
+    fmt.Printf("CLosed from_client\n")
+  }()
 
   enc := gob.NewEncoder(g.host)
-  for {
-    var err error
-    select {
-    case client_data := <-from_client:
-      err = enc.Encode(client_data)
-    case host_data := <-from_host:
-      _, err = g.seat.taken[host_data.Client].Write([]byte(host_data.Line))
-    case <-dead:
-      return
-    case <-g.seat.take:
-      g.seat.got <- false
-    }
+  for client_data := range from_client {
+    err := enc.Encode(client_data)
     if err != nil {
-      // TODO: Should kill everything here
-      dead <- true
-      return
+      defer close_conns()
+      break
     }
   }
 }
@@ -152,11 +166,13 @@ func getGame(name string) *Game {
 func unregisterGame(name string) {
   active_games_mutex.Lock()
   defer active_games_mutex.Unlock()
+  fmt.Printf("Unregistering %s\n", name)
   if game, ok := active_games[name]; ok {
     delete(active_games, name)
     for _, conn := range game.seat.taken {
       conn.Close()
     }
+    fmt.Printf("Closed client conns.\n")
   }
 }
 
@@ -265,12 +281,14 @@ func handleClient(conn *net.TCPConn) {
     fmt.Printf(err_msg)
     return
   }
+  fmt.Printf("Asking for seat %d\n", seat)
   if !game.TakeSeat(seat, conn) {
     err_msg := fmt.Sprintf("Seat %d is already taken.\n", seat)
     conn.Write([]byte(err_msg))
     fmt.Printf(err_msg)
     return
   }
+  fmt.Printf("Got seat %d\n", seat)
   conn.SetDeadline(time.Time{})
   success = true
 }
