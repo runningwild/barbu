@@ -14,6 +14,7 @@ import (
 var addr = flag.String("addr", "", "Address of the server.")
 var port = flag.Int("port", 9901, "Port to connect to server on.")
 var name = flag.String("name", "", "Name of the game to join.")
+var game = flag.String("game", "", "Name of the barbu sub-game to play.")
 
 type subConnPlayer struct {
   seat   int
@@ -135,7 +136,7 @@ func splitConn(conn net.Conn) []io.ReadWriter {
   return ret
 }
 
-func connectAsHost(addr string, port int, name string) {
+func connectAsHost(addr string, port int, name, game string) {
   raddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", addr, port))
   if err != nil {
     fmt.Printf("Unable to resolve server address: %v\n", err)
@@ -156,7 +157,7 @@ func connectAsHost(addr string, port int, name string) {
   }
   fmt.Printf("B\n")
   players := makePlayers(conn)
-  err = barbu.RunGames(players, 0, "ravage", 1, false)
+  err = barbu.RunGames(players, 0, game, 1, false)
   if err != nil {
     fmt.Printf("Error running games: %v\n", err)
     return
@@ -177,5 +178,9 @@ func main() {
     fmt.Printf("Must specify a game name with --name.\n")
     return
   }
-  connectAsHost(*addr, *port, *name)
+  if *game == "" {
+    fmt.Printf("Must specify a barbu sub-game with --game.\n")
+    return
+  }
+  connectAsHost(*addr, *port, *name, *game)
 }
