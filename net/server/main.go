@@ -45,9 +45,10 @@ func (g *Game) TakeSeat(seat int, conn net.Conn) bool {
   return <-g.seat.got
 }
 
-// Blocks until everyone has connected
-func (g *Game) Ready() bool {
-  return <-g.ready
+// Blocks until everyone has connected, then runs the game.
+func (g *Game) Run() {
+  <-g.ready
+  g.activeRoutine()
 }
 
 func (g *Game) startupRoutine() {
@@ -67,19 +68,20 @@ func (g *Game) startupRoutine() {
       }
 
     case ready <- true:
-      go g.activeRoutine()
       return
     }
   }
 }
 func (g *Game) activeRoutine() {
+  dead := make(chan bool, 10)
   from_host := make(chan base.RemoteData, 10)
   dec := gob.NewDecoder(g.host)
   go func() {
-    var rd base.RemoteData
     for {
+      var rd base.RemoteData
       err := dec.Decode(&rd)
       if err != nil {
+        dead <- true
         return
       }
       from_host <- rd
@@ -95,6 +97,7 @@ func (g *Game) activeRoutine() {
         line, err := reader.ReadString('\n')
         if err != nil {
           // TODO: Should probably kill everything at this point
+          dead <- true
           return
         }
         from_client <- base.RemoteData{client, line}
@@ -110,11 +113,14 @@ func (g *Game) activeRoutine() {
       err = enc.Encode(client_data)
     case host_data := <-from_host:
       _, err = g.seat.taken[host_data.Client].Write([]byte(host_data.Line))
+    case <-dead:
+      return
     case <-g.seat.take:
       g.seat.got <- false
     }
     if err != nil {
       // TODO: Should kill everything here
+      dead <- true
       return
     }
   }
@@ -176,21 +182,7 @@ func handleHost(conn *net.TCPConn) {
   w.Flush()
 
   game := getGame(name)
-  game.Ready()
-  dec := gob.NewDecoder(conn)
-  for {
-    var rd base.RemoteData
-    err := dec.Decode(&rd)
-    if err != nil {
-      fmt.Printf("Error, dying.\n")
-      return
-    }
-    _, err = game.seat.taken[rd.Client].Write([]byte(rd.Line))
-    if err != nil {
-      fmt.Printf("Error writing to client %d: %v\n", rd.Client, err)
-      return
-    }
-  }
+  game.Run()
 }
 
 func listenForHosts() error {

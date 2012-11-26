@@ -256,7 +256,21 @@ func equivalentPermutation(players []Player, pi, pj int) bool {
   return true
 }
 
-func RunGames(players []Player, seed int64, game string, num_games int, all_perms bool) {
+type runGamesErrors struct {
+  msg string
+}
+
+func (rge runGamesErrors) Error() string {
+  return rge.msg
+}
+
+func RunGames(players []Player, seed int64, game string, num_games int, all_perms bool) (err error) {
+  defer func() {
+    if r := recover(); r != nil {
+      err = runGamesErrors{fmt.Sprintf("%v", r)}
+    }
+  }()
+
   rng := cmwc.MakeGoodCmwc()
   if seed != 0 {
     rng.Seed(int64(seed))
@@ -375,4 +389,5 @@ func RunGames(players []Player, seed int64, game string, num_games int, all_perm
   for i := range total {
     fmt.Printf("Player %d: %.2f\n", i, float64(total[i])/float64(N*len(perms)))
   }
+  return
 }

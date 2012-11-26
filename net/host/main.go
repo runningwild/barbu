@@ -58,7 +58,7 @@ type subConn struct {
 }
 
 func (c *subConn) transferRemaining(buf []byte) int {
-  if len(buf) > len(c.remaining) {
+  if len(buf) >= len(c.remaining) {
     copy(buf, c.remaining)
     r := len(c.remaining)
     c.remaining = nil
@@ -71,14 +71,16 @@ func (c *subConn) transferRemaining(buf []byte) int {
 }
 
 func (c *subConn) Read(buf []byte) (int, error) {
-  if len(c.remaining) > 0 {
-    return c.transferRemaining(buf), nil
+  if len(c.remaining) == 0 {
+    c.remaining = <-c.in
   }
-  c.remaining = <-c.in
-  return c.transferRemaining(buf), nil
+  n := c.transferRemaining(buf)
+  // fmt.Printf("READ: '%s'\n", buf)
+  return n, nil
 }
 
 func (c *subConn) Write(buf []byte) (int, error) {
+  // fmt.Printf("WRITE: '%s'\n", buf)
   b := make([]byte, len(buf))
   copy(b, buf)
   c.out <- b
@@ -107,17 +109,18 @@ func splitConn(conn net.Conn) []io.ReadWriter {
 
   collect := make(chan base.RemoteData, 10)
   for i := range subs {
-    go func(n int, sc subConn) {
+    go func(n int, sc *subConn) {
       for data := range sc.out {
         collect <- base.RemoteData{n, string(data)}
       }
-    }(i, subs[i])
+    }(i, &subs[i])
   }
 
   enc := gob.NewEncoder(conn)
   go func() {
     for data := range collect {
       err := enc.Encode(data)
+      fmt.Printf("Sent(%d): '%s'\n", data.Client, data.Line)
       if err != nil {
         fmt.Printf("Error writing data from collector: %v\n", err)
         return
@@ -153,7 +156,11 @@ func connectAsHost(addr string, port int, name string) {
   }
   fmt.Printf("B\n")
   players := makePlayers(conn)
-  barbu.RunGames(players, 0, "ravage", 1, false)
+  err = barbu.RunGames(players, 0, "ravage", 1, false)
+  if err != nil {
+    fmt.Printf("Error running games: %v\n", err)
+    return
+  }
   fmt.Printf("D\n")
   // players[0].Stdin().Write([]byte("RAWR!!!"))
   fmt.Printf("E\n")

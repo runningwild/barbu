@@ -4,6 +4,7 @@ import (
   "bufio"
   "flag"
   "fmt"
+  "github.com/runningwild/barbu/util"
   "io"
   "net"
   "os"
@@ -17,25 +18,104 @@ var seat = flag.Int("seat", -1, "Player's seat ([0-3]) when connecting as a play
 var name = flag.String("name", "", "Name of the game to join.")
 var cmd = flag.String("cmd", "", "Command to run ai, leave blank for interactive mode.")
 
-// params := strings.Fields(name)
-// p.cmd = exec.Command(params[0], params[1:]...)
-// log, err := os.Create(log_filename)
-// if err != nil {
-//   return nil, err
-// }
-// in, err := p.cmd.StdinPipe()
-// if err != nil {
-//   return nil, err
-// }
-// out, err := p.cmd.StdoutPipe()
-// if err != nil {
-//   return nil, err
-// }
-// stderr, err := p.cmd.StderrPipe()
-// if err != nil {
-//   return nil, err
-// }
-// err = p.cmd.Start()
+func runCmd(cmd string, conn net.Conn) {
+  params := strings.Fields(cmd)
+  c := exec.Command(params[0], params[1:]...)
+  stdin, err := c.StdinPipe()
+  if err != nil {
+    panic(err)
+  }
+  stdout, err := c.StdoutPipe()
+  if err != nil {
+    panic(err)
+  }
+  stderr, err := c.StderrPipe()
+  if err != nil {
+    panic(err)
+  }
+  err = c.Start()
+  if err != nil {
+    fmt.Printf("Error running cmd '%s': %v\n", cmd, err)
+    return
+  }
+  dev_null, err := os.Open(os.DevNull)
+  if err != nil {
+    panic(err)
+  }
+  go io.Copy(dev_null, stderr)
+  go io.Copy(conn, stdout)
+  io.Copy(stdin, conn)
+}
+
+func interactiveMode(conn net.Conn) {
+  buf := bufio.NewReader(conn)
+  stdin := bufio.NewReader(os.Stdin)
+  var hand util.Hand
+  for {
+    // Read in what seat you are
+    line, err := buf.ReadString('\n')
+    if err != nil {
+      if err == io.EOF {
+        return
+      }
+      panic(err)
+    }
+    line = strings.TrimSpace(line)
+    fmt.Printf("You are: %s\n", line)
+
+    // Read in your hand
+    line, err = buf.ReadString('\n')
+    hand = util.Hand(strings.Fields(line))
+    hand.Sort()
+    fmt.Printf("Your hand is: %s\n", hand)
+
+    // Read in the game
+    line, err = buf.ReadString('\n')
+    line = strings.TrimSpace(line)
+    fmt.Printf("The game is: %s\n", line)
+    // TODO: Need to support non-trick-taking games
+
+    // Read in 'DOUBLING', then all of the doubling info
+    line, err = buf.ReadString('\n')
+    line = strings.TrimSpace(line)
+    fmt.Printf("READ DOUBLING: %s\n", line)
+    for i := 0; i < 4; i++ {
+      fmt.Printf("Reading ... ")
+      line, err = buf.ReadString('\n')
+      fmt.Printf(" Read: '%s'\n", line)
+      line = strings.TrimSpace(line)
+      if line == "DOUBLE" {
+        fmt.Printf("Time to double!\n")
+        line, err = stdin.ReadString('\n')
+        _, err = conn.Write([]byte(line))
+      } else {
+        fmt.Printf("DOUBLING INFO: %s\n", line)
+      }
+    }
+
+    for {
+      line, err = buf.ReadString('\n')
+      line = strings.TrimSpace(line)
+      if line != "TRICK" {
+        break
+      }
+
+      fmt.Printf("Your hand: %v\n", hand)
+      for i := 0; i < 4; i++ {
+        line, err = buf.ReadString('\n')
+        line = strings.TrimSpace(line)
+        if line == "PLAY" {
+          line, err = stdin.ReadString('\n')
+          _, err = conn.Write([]byte(line))
+          hand.Remove(strings.TrimSpace(line))
+        } else {
+          fmt.Printf("TRICK INFO: %s\n", line)
+        }
+      }
+    }
+    fmt.Printf("END: %s\n", line)
+  }
+}
 
 func connectAsPlayer(cmd, addr string, port int, name string, seat int) {
   raddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", addr, port))
@@ -64,54 +144,11 @@ func connectAsPlayer(cmd, addr string, port int, name string, seat int) {
   }
 
   if cmd != "" {
-    params := strings.Fields(cmd)
-    c := exec.Command(params[0], params[1:]...)
-    stdin, err := c.StdinPipe()
-    if err != nil {
-      panic(err)
-    }
-    stdout, err := c.StdoutPipe()
-    if err != nil {
-      panic(err)
-    }
-    stderr, err := c.StderrPipe()
-    if err != nil {
-      panic(err)
-    }
-    err = c.Start()
-    if err != nil {
-      fmt.Printf("Error running cmd '%s': %v\n", cmd, err)
-      return
-    }
-    dev_null, err := os.Open(os.DevNull)
-    if err != nil {
-      panic(err)
-    }
-    go io.Copy(dev_null, stderr)
-    go io.Copy(conn, stdout)
-    io.Copy(stdin, conn)
-    return
+    runCmd(cmd, conn)
+  } else {
+    interactiveMode(conn)
   }
 
-  buf := bufio.NewReader(conn)
-  go func() {
-    buf := bufio.NewReader(os.Stdin)
-    for {
-      line, err := buf.ReadString('\n')
-      if err != nil {
-        panic(err)
-      }
-      conn.Write([]byte(line))
-    }
-  }()
-  for {
-    line, err := buf.ReadString('\n')
-    if err != nil {
-      fmt.Printf("ERROR: %v\n", err)
-      return
-    }
-    fmt.Printf("%s\n", line)
-  }
 }
 func main() {
   flag.Parse()
