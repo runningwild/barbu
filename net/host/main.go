@@ -44,13 +44,13 @@ func (p *subConnPlayer) Stderr() *bufio.Reader {
 func (p *subConnPlayer) Close() {
 }
 
-func makePlayers(conn net.Conn) []barbu.Player {
-  splits := splitConn(conn)
+func makePlayers(conn net.Conn) ([]barbu.Player, io.Closer) {
+  splits, closer := splitConn(conn)
   var players []barbu.Player
   for seat, sub := range splits {
     players = append(players, makeSubConnPlayer(sub, seat))
   }
-  return players
+  return players, closer
 }
 
 type subConn struct {
@@ -88,12 +88,30 @@ func (c *subConn) Write(buf []byte) (int, error) {
   return len(b), nil
 }
 
-func splitConn(conn net.Conn) []io.ReadWriter {
+type subConnCloser struct {
+  outs []chan []byte
+  done chan struct{}
+}
+
+func (c *subConnCloser) Close() error {
+  for _, out := range c.outs {
+    close(out)
+  }
+  <-c.done
+  return nil
+}
+
+func splitConn(conn net.Conn) ([]io.ReadWriter, io.Closer) {
   subs := make([]subConn, 4)
   for i := range subs {
     subs[i].in = make(chan []byte, 10)
     subs[i].out = make(chan []byte, 10)
   }
+  var sccloser subConnCloser
+  for i := range subs {
+    sccloser.outs = append(sccloser.outs, subs[i].out)
+  }
+  sccloser.done = make(chan struct{})
 
   go func() {
     dec := gob.NewDecoder(conn)
@@ -109,13 +127,21 @@ func splitConn(conn net.Conn) []io.ReadWriter {
   }()
 
   collect := make(chan base.RemoteData, 10)
+  shutdown := make(chan bool)
   for i := range subs {
     go func(n int, sc *subConn) {
       for data := range sc.out {
         collect <- base.RemoteData{n, string(data)}
       }
+      shutdown <- true
     }(i, &subs[i])
   }
+  go func() {
+    for _ = range subs {
+      <-shutdown
+    }
+    close(collect)
+  }()
 
   enc := gob.NewEncoder(conn)
   go func() {
@@ -127,13 +153,15 @@ func splitConn(conn net.Conn) []io.ReadWriter {
         return
       }
     }
+    conn.Close()
+    sccloser.done <- struct{}{}
   }()
 
   ret := make([]io.ReadWriter, len(subs))
   for i := range ret {
     ret[i] = &subs[i]
   }
-  return ret
+  return ret, &sccloser
 }
 
 func connectAsHost(addr string, port int, name, game string) {
@@ -148,7 +176,6 @@ func connectAsHost(addr string, port int, name, game string) {
     fmt.Printf("Unable to connect to server: %v\n", err)
     return
   }
-  defer conn.Close()
   fmt.Printf("A\n")
   _, err = conn.Write([]byte(fmt.Sprintf("%s\n", name)))
   if err != nil {
@@ -156,8 +183,9 @@ func connectAsHost(addr string, port int, name, game string) {
     return
   }
   fmt.Printf("B\n")
-  players := makePlayers(conn)
+  players, closer := makePlayers(conn)
   err = barbu.RunGames(players, 0, game, 1, false)
+  closer.Close()
   if err != nil {
     fmt.Printf("Error running games: %v\n", err)
     return
