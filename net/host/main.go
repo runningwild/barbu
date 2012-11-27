@@ -11,7 +11,7 @@ import (
   "net"
 )
 
-var addr = flag.String("addr", "", "Address of the server.")
+var addr = flag.String("addr", "127.0.0.1", "Address of the server.")
 var port = flag.Int("port", 9901, "Port to connect to server on.")
 var name = flag.String("name", "", "Name of the game to join.")
 var game = flag.String("game", "", "Name of the barbu sub-game to play.")

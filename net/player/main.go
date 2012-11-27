@@ -12,7 +12,7 @@ import (
   "strings"
 )
 
-var addr = flag.String("addr", "", "Address of the server.")
+var addr = flag.String("addr", "127.0.0.1", "Address of the server.")
 var port = flag.Int("port", 9902, "Port to connect to server on.")
 var seat = flag.Int("seat", -1, "Player's seat ([0-3]) when connecting as a player.")
 var name = flag.String("name", "", "Name of the game to join.")
