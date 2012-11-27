@@ -100,7 +100,7 @@ func interactiveMode(conn net.Conn) {
         break
       }
 
-      fmt.Printf("Your hand: %v\n", hand)
+      fmt.Printf("\nYour hand: %v\n", hand)
       for i := 0; i < 4; i++ {
         line, err = buf.ReadString('\n')
         line = strings.TrimSpace(line)

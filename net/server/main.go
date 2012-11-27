@@ -75,7 +75,8 @@ func (g *Game) startupRoutine() {
   }
 }
 func (g *Game) activeRoutine() {
-  close_conns := func() {
+  close_conns := func(caller string) {
+    fmt.Printf("Closing conns from %s\n", caller)
     g.host.Close()
     for i := 0; i < 4; i++ {
       g.seat.taken[i].Close()
@@ -85,15 +86,17 @@ func (g *Game) activeRoutine() {
   // Take incoming data from the host and send it to the appropriate client.
   dec := gob.NewDecoder(g.host)
   go func() {
-    defer close_conns()
+    defer close_conns("decoder")
     for {
       var rd base.RemoteData
       err := dec.Decode(&rd)
       if err != nil {
+        fmt.Printf("Error on decode: %v\n", err)
         return
       }
       _, err = g.seat.taken[rd.Client].Write([]byte(rd.Line))
       if err != nil {
+        fmt.Printf("Error on client write: %v\n", err)
         return
       }
     }
@@ -113,8 +116,8 @@ func (g *Game) activeRoutine() {
         line, err := reader.ReadString('\n')
         if err != nil {
           // TODO: Should probably kill everything at this point
-          fmt.Printf("Client killed %d\n", client)
-          defer close_conns()
+          fmt.Printf("Client killed %d: %v\n", client, err)
+          defer close_conns("clients")
           break
         }
         from_client <- base.RemoteData{client, line}
@@ -134,7 +137,7 @@ func (g *Game) activeRoutine() {
   for client_data := range from_client {
     err := enc.Encode(client_data)
     if err != nil {
-      defer close_conns()
+      defer close_conns("encoder")
       break
     }
   }
@@ -180,16 +183,17 @@ func handleHost(conn *net.TCPConn) {
   defer conn.Close()
   defer fmt.Printf("Closed host conn.\n")
 
-  r := bufio.NewReader(conn)
   w := bufio.NewWriter(conn)
-  line, err := r.ReadString('\n')
+
+  name_line := make([]byte, 32)
+  n, err := conn.Read(name_line)
   if err != nil {
     // TODO: Log this error
     fmt.Printf("Failed to read game from host: %v\n", err)
     return
   }
-  name := strings.TrimSpace(line)
-  fmt.Printf("Game name: %s\n", name)
+  name := strings.TrimSpace(string(name_line[0:n]))
+  fmt.Printf("Game name: '%s': %d\n", name, len(name))
   if !registerGame(name, conn) {
     w.Write([]byte(fmt.Sprintf("Unable to make game '%s', that name is already in use.\n", name)))
     return

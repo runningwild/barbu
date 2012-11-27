@@ -177,7 +177,13 @@ func connectAsHost(addr string, port int, name, game string) {
     return
   }
   fmt.Printf("A\n")
-  _, err = conn.Write([]byte(fmt.Sprintf("%s\n", name)))
+  name_line := make([]byte, 32)
+  for i := range name_line {
+    name_line[i] = ' '
+  }
+  copy(name_line, name)
+  fmt.Printf("Sending '%s': %d\n", name_line, len(name_line))
+  _, err = conn.Write(name_line)
   if err != nil {
     fmt.Printf("Failed to host game: %v\n", err)
     return
