@@ -258,6 +258,8 @@ void AbstractMetaPlayer::Play() {
       player = NewLastTwoPlayer(seat, card_set);
     } else if (game == "BARBU") {
       player = NewRavagePlayer(seat, card_set);
+    } else if (game == "KILLERQUEENS") {
+      player = NewKillerQueensPlayer(seat, card_set);
     } else {
       assert(false);
     }

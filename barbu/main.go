@@ -285,7 +285,7 @@ func RunGames(players []Player, seed int64, game string, num_games int, all_perm
     }
   }
   if !valid_game {
-    fmt.Printf("'%s' is not a valid game.  Valid games are %v.\n", AllBarbuGameNames())
+    fmt.Printf("'%s' is not a valid game.  Valid games are %v.\n", game, AllBarbuGameNames())
   }
 
   var total [4]int

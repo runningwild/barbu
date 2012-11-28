@@ -184,17 +184,18 @@ func (s *Stats) Taken(player int, rank, suit byte) int {
   return count
 }
 
+func (s *Stats) Remaining(card string) bool {
+  return s.remaining_cards[card]
+}
+
 func (s *Stats) RemainingInSuit(suit byte) int {
   return s.remaining_suits[suit]
 }
 
 func (s *Stats) RemainingAboveInSuit(rank, suit byte) int {
   count := 0
-  for this_rank := range rank_map {
-    if rank_map[this_rank] <= rank_map[rank] {
-      continue
-    }
-    if s.remaining_cards[string([]byte{this_rank, suit})] {
+  for card := range s.remaining_cards {
+    if card[1] == suit && rank_map[card[0]] > rank_map[rank] {
       count++
     }
   }

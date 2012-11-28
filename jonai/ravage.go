@@ -61,8 +61,6 @@ func (r *ravageAi) Lead() string {
       continue
     }
     ratio := float64(shand.Len()) / float64(r.stats.RemainingInSuit(suit))
-    val := shand[len(shand)-1][0]
-    ratio *= float64(val * val)
     if ratio < lowest_ratio {
       lowest_ratio = ratio
       card = shand[0]

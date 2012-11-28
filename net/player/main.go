@@ -105,6 +105,7 @@ func interactiveMode(conn net.Conn) {
         line, err = buf.ReadString('\n')
         line = strings.TrimSpace(line)
         if line == "PLAY" {
+          fmt.Printf("Your turn: ")
           line, err = stdin.ReadString('\n')
           _, err = conn.Write([]byte(line))
           hand.Remove(strings.TrimSpace(line))

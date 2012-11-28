@@ -18,6 +18,11 @@ class MetaPlayer : public AbstractMetaPlayer {
                                             const CardSet& card_set) const {
     return new RavagePlayer(seat, card_set);
   }
+
+  AbstractTrickTakingPlayer* NewKillerQueensPlayer(int seat,
+                                            const CardSet& card_set) const {
+    return new RavagePlayer(seat, card_set);
+  }
 };
 
 int main() {

@@ -100,6 +100,8 @@ class AbstractMetaPlayer {
       int seat, const CardSet& card_set) const = 0;
   virtual AbstractTrickTakingPlayer* NewBarbuPlayer(
       int seat, const CardSet& card_set) const = 0;
+  virtual AbstractTrickTakingPlayer* NewKillerQueensPlayer(
+      int seat, const CardSet& card_set) const = 0;
 };
 
 #endif  // AI_H_

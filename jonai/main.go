@@ -70,6 +70,9 @@ func main() {
     case "BARBU":
       StandardTrickTakingAi(stdin, seating, hand, NewBarbuAi())
 
+    case "KILLERQUEENS":
+      StandardTrickTakingAi(stdin, seating, hand, NewKillerQueensAi())
+
     case "DONE":
       return
 
